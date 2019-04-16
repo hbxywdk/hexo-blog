@@ -9,7 +9,7 @@ category: Linux
 ### 前置工作
 1. 一台阿里云服务器（2核4G以上）
 2. 配置服务器入方向安全组规则（阿里云安全组出方向默认允许所有访问，所以不用配置）
-![配置入方向安全组](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-03/http-flv.png)
+![配置入方向安全组](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/safe-group.jpg)
 
 
 ### Step1：安装和配置必要依赖项
