@@ -6,8 +6,9 @@ desc:
 tag: 
 category: Linux
 ---
-### Step1：安装Gitlab-runner（版本为11.9.2）
-#### 下载系统对应的Gitlab-runner版本：
+### Step1：安装Gitlab-runner
+#### 下载系统对应的Gitlab-runner（当前版本为11.9.2）：
+如果出现未定义命令可去掉sudo
 ```
  # Linux x86-64
  sudo wget -O /usr/local/bin/gitlab-runner https://gitlab-runner-downloads.s3.amazonaws.com/latest/binaries/gitlab-runner-linux-amd64
@@ -22,7 +23,7 @@ category: Linux
 ```
  sudo chmod +x /usr/local/bin/gitlab-runner
 ```
-#### 如果想使用 Docker 可以安装 Docker（不使用Docker直接跳过）
+#### 如果想使用 Docker 可以安装 Docker（不使用可直接跳过）
 ```
  curl -sSL https://get.docker.com/ | sh
 ```
@@ -39,7 +40,6 @@ category: Linux
 ### Step2：注册Runner
 #### 运行以下命令开始注册：
 ```
- # 如果出现未定义命令可去掉sudo
  sudo gitlab-runner register
 ```
 #### 填入Gitlab URL：
@@ -52,19 +52,19 @@ category: Linux
 这里的token分为两种
 `一种是 Shared Runner ，该 Runner 所有项目都可以使用`
 位置：顶部设置图标🔧 -> 左侧栏Overview -> Runner
-![share-runners]()
+![share-runners](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/share-runner.jpg)
 `另一种是 Specific Runner ，该 Runner 指定具体某个项目才可使用`
 位置：进入某个项目 -> 左侧栏Setting -> CI/CD -> 在内容区域找到Runners一项，点击展开
-![specific-runners]()
+![specific-runners](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/specific-runner.jpg)
 ```
  Please enter the gitlab-ci token for this runner
- # token
+ # 这里我们使用 Shared Runner Token
  xxxxxxx
 ```
 #### 输入一个Runner的description ，可以在稍后的GitLab的UI中更改这个描述：
 ```
  Please enter the gitlab-ci description for this runner
- gitlab-runner-description
+ test-gitlab-runner-description
 ```
 #### 输入Runner的tags
 ```
@@ -88,8 +88,80 @@ Runner registered successfully. Feel free to start it, but if it's running alrea
 ```
 
 我们回到Share Runners 就可以看到我们添加的 runner 了
-![specific-runners]()
+![runner-success](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/runner-success.jpg)
 
+### Step3 创建项目与 .gitlab-ci.yml 文件
+#### 在项目根目录下创建 .gitlab-ci.yml 文件，然后用 git 提交。
+```
+# 定义 stages（阶段，会依次执行）
+stages:
+  - install_deps
+  - build_prod
+  - deploy_prod
 
+cache:
+  key: ${CI_BUILD_REF_NAME}
+  paths:
+    - node_modules/
+    - dist
 
-GitLab Runner 最好不要与 GitLab 安装在同一台机器上。
+# 安装构建依赖
+install_deps_job:
+  stage: install_deps
+  # 在哪个分支才会执行脚本
+  only:
+    # - dev
+    # - release
+    - master
+  script:
+    - echo '模拟安装构建依赖阶段'
+  tags:
+    - my-tag
+
+# 构建预prod环境src目录下应用
+build_prod_job:
+  stage: build_prod
+  only:
+    - master
+  script:
+    - echo '构建预prod环境src目录下应用阶段'
+  tags:
+    - my-tag
+
+# 部署生产环境
+deploy_prod_job:
+  stage: deploy_prod
+  only:
+    - master
+  script:
+    - echo '部署生产环境阶段'
+  tags:
+    - my-tag
+
+```
+`然后你可能会看到报错`
+```
+Running with gitlab-runner 11.9.2 (fa86510e)
+  on desc Z1UPKJjn
+Using Shell executor...
+Running on iZwz98jvb8bcz40ko474qsZ...
+bash: line 68: git: command not found
+bash: line 66: cd: /home/gitlab-runner/builds/Z1UPKJjn/0/main-group/main-project: No such file or directory
+ERROR: Job failed: exit status 1
+```
+![尴尬](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/ganga.jpg)
+`报错的原因是我的服务器是一台只安装了 Gitlab-runner 的服务器，根据报错提示，需要 git 来拉取 Gitlab 服务器上的代码，所以我们安装 git：`
+```
+yum -y install git
+```
+然后使用
+```
+git --version 查看 git 是否安装成功
+```
+之后重新执行pipline或提交代码，可以看到一切运行正常：
+![deploy-success](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/deploy-success.jpg)
+
+### 注意点总结
+> Gitlab-runner 服务器上需要安装 Git。
+> GitLab Runner 最好不要与 GitLab 安装在同一台机器上。
+> 如果全部配置好了，也提交了但一直处于 pending状态并且提示：`This build is stuck, because the project doesn't have any runners online assigned to it. Go to Runners page `,这是因为未找到对应的runner，原因一可能是gitlab-runner注册失败，原因二可能是.gitlab-ci.yml配置文件里面tags没有匹配到已注册可用的runner，我们在stage中加入对应runner注册时输入的tags即可。
