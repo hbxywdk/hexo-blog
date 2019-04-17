@@ -51,7 +51,7 @@ ssh-rsa XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX youremail@example.c
  vi authorized_keys
 ```
 进入编辑后，按 `I` 进入修改，将我们电脑上的公钥复制进去。 
-修改完成后 依次按 `Esc`、`:`、`w`、`q`，回车保存修改，之后重启服务。
+修改完成后 依次按 `Esc`、`:`、`w`、`q`，回车保存修改。
 #### 然后查看一下
 ```
 cat authorized_keys
