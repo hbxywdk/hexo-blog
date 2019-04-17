@@ -6,8 +6,13 @@ desc:
 tag: 
 category: Linux
 ---
+### 前置工作
+两台服务器，我的都是Linux CentOS 7.6 64位
+一台用需要安装 Gitlab，关于如何安装 Gitlab ，可查看这篇文章 [阿里云安装GITLAB笔记](https://hbxywdk.github.io/2019/04/16/%E9%98%BF%E9%87%8C%E4%BA%91%E5%AE%89%E8%A3%85Gitlab%E7%AC%94%E8%AE%B0/)。
+另一台用于安装 Gitlab-runner。
+
 ### Step1：安装Gitlab-runner
-#### 下载系统对应的Gitlab-runner（当前版本为11.9.2）：
+#### 下载系统对应的Gitlab-runner（当前安装版本为11.9.2）：
 如果出现未定义命令可去掉sudo
 ```
  # Linux x86-64
@@ -45,7 +50,7 @@ category: Linux
 #### 填入Gitlab URL：
 ```
  Please enter the gitlab-ci coordinator URL (e.g. https://gitlab.com )
- # 这里我填的是IP
+ # 没有域名所以填的是IP
  http://xx.xx.xxx.xx:8888
 ```
 #### 输入注册Runner所需要的token：
@@ -66,7 +71,7 @@ category: Linux
  Please enter the gitlab-ci description for this runner
  test-gitlab-runner-description
 ```
-#### 输入Runner的tags
+#### 输入Runner的tags（这个tags后面会用到）
 ```
  Please enter the gitlab-ci tags for this runner (comma separated)
  my-tag
@@ -77,7 +82,7 @@ category: Linux
  Please enter the executor: ssh, docker+machine, docker-ssh+machine, kubernetes, docker, parallels, virtualbox, docker-ssh, shell:
  shell
 ```
-如果一切正常的话我们将会看到
+如果一切正常的话我们会看到
 ```
 Runner registered successfully. Feel free to start it, but if it's running already the config should be automatically reloaded!
 ```
@@ -161,7 +166,16 @@ git --version 查看 git 是否安装成功
 之后重新执行pipline或提交代码，可以看到一切运行正常：
 ![deploy-success](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/deploy-success.jpg)
 
-### 注意点总结
-> Gitlab-runner 服务器上需要安装 Git。
-> GitLab Runner 最好不要与 GitLab 安装在同一台机器上。
-> 如果全部配置好了，也提交了但一直处于 pending状态并且提示：`This build is stuck, because the project doesn't have any runners online assigned to it. Go to Runners page `,这是因为未找到对应的runner，原因一可能是gitlab-runner注册失败，原因二可能是.gitlab-ci.yml配置文件里面tags没有匹配到已注册可用的runner，我们在stage中加入对应runner注册时输入的tags即可。
+### 注意点：
+1. Gitlab-runner 服务器上需要安装 Git。
+2. 如果全部配置好了，也提交了但一直处于 pending状态并且提示：`This build is stuck, because the project doesn't have any runners online assigned to it. Go to Runners page `,这是因为未找到对应的runner，原因一可能是gitlab-runner注册失败，原因二可能是.gitlab-ci.yml配置文件里面tags没有匹配到已注册可用的runner，我们在stage中加入对应runner注册时输入的tags即可。
+3. GitLab 最好不要与 GitLab Runner 装在同一台机器上。
+
+### 参考:
+> [Install GitLab Runner manually on GNU/Linux](https://docs.gitlab.com/runner/install/linux-manually.html)
+> [Registering Runners](https://docs.gitlab.com/runner/register/index.html)
+> [GitLab Runner commands](https://docs.gitlab.com/runner/commands/README.html)
+> [GitLab CI/CD Pipeline Configuration Reference](https://docs.gitlab.com/ee/ci/yaml/README.html)
+> [Docker搭建自己的Gitlab CI Runner](https://cloud.tencent.com/developer/article/1010595)
+
+
