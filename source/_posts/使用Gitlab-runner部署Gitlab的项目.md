@@ -328,8 +328,8 @@ http{
 重启，终于可以正常访问了
 ![end](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/end.jpg)
 
-#### 我们修改代码，并提交，等待构建完成，刷新页面
-![end2](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/end.jpg2)
+#### 我们修改代码，并提交，等待构建完成，刷新页面，可以看到修改已成功添加
+![end2](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/end2.jpg)
 
 
 ### 参考：
