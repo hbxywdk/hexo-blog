@@ -223,13 +223,20 @@ deploy_prod_job:
     - echo '登录项目部署服务器，将打包好的文件拷贝过去'
     - cd dist # 进入dist
     - pwd
-    - ssh root@39.98.177.19 # 登录目标服务器
-    - ls -a
+    - whoami # gitlab-runner
+     # 登录目标服务器
+    - ssh root@39.98.177.19
+    # 列出所有文件
+    - ssh root@39.98.177.19 "ls -a"
+    # 删 www 文件夹下所有内容
+    - ssh root@39.98.177.19 "rm -rf ./www/*"
+    # 使用 scp 命令远程拷贝文件
+    - scp -r -P 22 ./* root@39.98.177.19:/root/www
   tags:
     - my-tag
 ```
 这里 ssh root@39.98.177.19 可能会报错 `Pseudo-terminal will not be allocated because stdin is not a terminal. `
-字面意思是伪终端将无法分配，因为标准输入不是终端。所以需要增加-t -t参数来强制伪终端分配，即使标准输入不是终端。
+字面意思是伪终端将无法分配，因为标准输入不是终端。增加-t -t参数来强制伪终端分配，即使标准输入不是终端， `这里不用理会！`。
 ```
 ssh -t -t root@xx.xx.xxx.xx
 ```
