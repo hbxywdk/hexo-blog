@@ -10,7 +10,7 @@ category: Linux
 ### Step1 Linux 对 Linux 免密登录
 在[这篇](https://hbxywdk.github.io/2019/04/17/Linux%E5%85%8D%E5%AF%86%E7%99%BB%E5%BD%95/)文章中已经实现了 Windows 对 Linux 的免密登录，Linux 对 Linux 也是类似的。
 
-#### 注意：
+#### 特别注意：
 `我们在搭建 gitlab-runner 时创建了一个叫 ‘gitlab-runner’ 的用户，gitlab-runner 所有的操作都是在 ‘gitlab-runner’ 帐号下进行的`
 可以在脚本中加入 whoami 命令：
 ```
@@ -31,7 +31,7 @@ ERROR: Job failed: exit status 1
 sudo useradd --comment 'GitLab Runner' --create-home gitlab-runner --shell /bin/bash
 ```
 创建了gitlab-runner帐号
-如果没有，需重新创建，然后修改密码
+如果没有，需重新创建，然后修改密码`这里修改密码不会影响 gitlab-runner 使用该账户`
 ```
 passwd gitlab-runner
 ```
@@ -81,7 +81,7 @@ git add .
 git commit -m "Initial commit"
 git push -u origin master
 ```
-![gitlab-vue](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/gitlab-project.jpg)
+![gitlab-vue](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/gitlabProject.jpg)
 
 ### Step3 编写 .gitlab-ci.yml 文件
 在项目根目录创建 .gitlab-ci.yml 文件
@@ -240,6 +240,94 @@ deploy_prod_job:
 ```
 ssh -t -t root@xx.xx.xxx.xx
 ```
+
+### Step4 在项目服务器上安装 Nginx
+
+#### 在阿里云安全组规则添加一个端口8889
+之前有弄过，这里不再赘述。
+
+#### 安装依赖包
+```
+yum -y install gcc zlib zlib-devel pcre-devel openssl openssl-devel
+```
+#### 下载Nginx并解压
+```
+cd /usr/local
+mkdir nginx
+cd nginx
+# 下载tar包
+wget http://nginx.org/download/nginx-1.13.7.tar.gz
+# 解压
+tar -xvf nginx-1.13.7.tar.gz
+```
+#### 安装Nginx
+```
+cd /usr/local/nginx/nginx-1.13.7 
+# 执行
+./configure
+# 执行make命令
+make
+# 执行make install
+make install
+```
+#### 修改Nginx配置文件
+```
+vi /usr/local/nginx/conf/nginx.conf
+```
+做如下修改
+```
+# user  nobody;
+# ... 省略
+http{
+    server {
+        listen       8889;
+        server_name  localhost;
+
+        #charset koi8-r;
+
+        #access_log  logs/host.access.log  main;
+
+        location / {
+            root   /root/www;
+            index  index.html index.htm;
+        }
+
+    }
+    # ... 省略
+}
+
+```
+#### 重启Nginx
+```
+cd /usr/local/nginx/sbin
+./nginx -s reload
+```
+访问IP+端口，我这里发现`返回了403`
+回到Nginx配置文件，`将user nobody 的注释打开，并修改为 user  root;`
+```
+user  root;
+# ... 省略
+http{
+    server {
+        listen       8889;
+        server_name  localhost;
+
+        #charset koi8-r;
+
+        #access_log  logs/host.access.log  main;
+
+        location / {
+            root   /root/www;
+            index  index.html index.htm;
+        }
+
+    }
+    # ... 省略
+}
+```
+重启，终于可以正常访问了
+![end]()
+
 
 
 ### 参考：
