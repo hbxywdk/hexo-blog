@@ -326,9 +326,12 @@ http{
 }
 ```
 重启，终于可以正常访问了
-![end]()
+![end](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/end.jpg)
 
+#### 我们修改代码，并提交，等待构建完成，刷新页面
+![end2](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/end.jpg2)
 
 
 ### 参考：
 > [如何在 CentOS 安装 node.js](https://blog.csdn.net/lu_embedded/article/details/79138650)
+> [解决nginx 403forbidden问题](https://blog.csdn.net/yishuifengxiao/article/details/80574769)
