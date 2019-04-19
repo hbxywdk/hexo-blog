@@ -13,7 +13,7 @@ category: Linux
 
 ### Step1：安装Gitlab-runner
 #### 下载系统对应的Gitlab-runner（当前安装版本为11.9.2）：
-如果出现未定义命令可去掉sudo
+
 ```
  # Linux x86-64
  sudo wget -O /usr/local/bin/gitlab-runner https://gitlab-runner-downloads.s3.amazonaws.com/latest/binaries/gitlab-runner-linux-amd64
@@ -77,7 +77,7 @@ category: Linux
  my-tag
 ```
 #### 选择Runner的执行者
-这里我使用 shell，如果要使用 Docker 则输入 docker。
+这里我使用 shell。
 ```
  Please enter the executor: ssh, docker+machine, docker-ssh+machine, kubernetes, docker, parallels, virtualbox, docker-ssh, shell:
  shell
@@ -168,7 +168,7 @@ git --version 查看 git 是否安装成功
 
 ### 注意点：
 1. Gitlab-runner 服务器上需要安装 Git。
-2. 如果全部配置好了，也提交了但一直处于 pending状态并且提示：`This build is stuck, because the project doesn't have any runners online assigned to it. Go to Runners page `,这是因为未找到对应的runner，原因一可能是gitlab-runner注册失败，原因二可能是.gitlab-ci.yml配置文件里面tags没有匹配到已注册可用的runner，我们在stage中加入对应runner注册时输入的tags即可。
+2. 全部配置好了，提交后却一直处于 pending 状态并且提示：`This build is stuck, because the project doesn't have any runners online assigned to it. Go to Runners page `,这是因为未找到对应的 runner，原因一：可能是gitlab-runner注册失败，原因二：可能是.gitlab-ci.yml配置文件里面 tags 没有匹配到已注册可用的 runner，在 stage 中加入对应 runner 注册时输入的 tags 即可。
 3. GitLab 最好不要与 GitLab Runner 装在同一台机器上。
 
 ### 参考:

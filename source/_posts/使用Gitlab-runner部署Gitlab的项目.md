@@ -12,7 +12,7 @@ category: Linux
 
 #### 特别注意：
 `我们在搭建 gitlab-runner 时创建了一个叫 ‘gitlab-runner’ 的用户，gitlab-runner 所有的操作都是在 ‘gitlab-runner’ 帐号下进行的`
-可以在脚本中加入 whoami 命令：
+可以在脚本中加入 whoami 命令查看：
 ```
 whoami
 # 可以看到确实是 gitlab-runner 用户
@@ -26,12 +26,12 @@ ERROR: Job failed: exit status 1
 `因为 ‘gitlab-runner’ 用户根本没有免密登录权限`
 
 #### 登录gitlab-runner用户
-在安装gitlab-runner时，有这样一行命令
+还记得我们在安装gitlab-runner时，有这样一行命令吗？
 ```
 sudo useradd --comment 'GitLab Runner' --create-home gitlab-runner --shell /bin/bash
 ```
-创建了gitlab-runner帐号
-如果没有，需重新创建，然后修改密码`这里修改密码不会影响 gitlab-runner 使用该账户`
+就是在这里创建了gitlab-runner帐号
+如果没有，需重新创建，然后修改密码`注意：这里修改密码不会影响 gitlab-runner 使用该账户`
 ```
 passwd gitlab-runner
 ```
@@ -87,8 +87,9 @@ git push -u origin master
 在项目根目录创建 .gitlab-ci.yml 文件
 主要流程如下
 1. 安装构建依赖。
-2. 移除旧版本项目文件，并打包新文件。
-3. 登录项目部署服务器，将打包好的文件拷贝过去。
+2. 打包新文件。
+3. 登录项目部署服务器，移除旧版本项目文件，最后将打包好的文件拷贝过去。
+
 
 注意这里前两步都是在Gitlab-runner上完成的
 
@@ -115,23 +116,23 @@ install_deps_job:
   tags:
     - my-tag
 
-# 移除旧版本项目文件，并打包新文件
+# 打包新文件
 build_prod_job:
   stage: build_prod
   only:
     - master
   script:
-    - echo '移除旧版本项目文件，并打包新文件阶段'
+    - echo '打包新文件阶段'
   tags:
     - my-tag
 
-# 登录项目部署服务器，将打包好的文件拷贝过去
+# 登录项目部署服务器，移除旧版本项目文件，最后将打包好的文件拷贝过去
 deploy_prod_job:
   stage: deploy_prod
   only:
     - master
   script:
-    - echo '登录项目部署服务器，将打包好的文件拷贝过去'
+    - echo '登录项目部署服务器，移除旧版本项目文件，最后将打包好的文件拷贝过去'
   tags:
     - my-tag
 ```
@@ -169,17 +170,17 @@ babel.config.js  .git           package.json       src
 
 ```
 
-#### 2.移除旧版本项目文件，并打包新文件
+#### 2.打包新文件
 Vue-cli3 的打包命令会将项目打包在 dist 文件夹中
 这一步我们先移除旧版本的 dist 文件夹，然后重新打包
 ```
-# 移除旧版本项目文件，并打包新文件
+# 打包新文件
 build_prod_job:
   stage: build_prod
   only:
     - master
   script:
-    - echo '移除旧版本项目文件，并打包新文件阶段'
+    - echo '打包新文件阶段'
     - pwd # 查看当前目录
     - ls -a # 查看所有文件
     - rm -rf ./dist # 删除当前文件夹下的 dist 文件夹
@@ -210,17 +211,17 @@ src
 yarn.lock
 ```
 
-#### 3.登录项目部署服务器，将打包好的文件拷贝过去
+#### 3.登录项目部署服务器，移除旧版本项目文件，最后将打包好的文件拷贝过去
 我们在项目服务器的 root 新建 www 文件夹，用来放我们的项目打包文件
 
 ```
-# 登录项目部署服务器，将打包好的文件拷贝过去
+# 登录项目部署服务器，移除旧版本项目文件，最后将打包好的文件拷贝过去
 deploy_prod_job:
   stage: deploy_prod
   only:
     - master
   script:
-    - echo '登录项目部署服务器，将打包好的文件拷贝过去'
+    - echo '登录项目部署服务器，移除旧版本项目文件，最后将打包好的文件拷贝过去'
     - cd dist # 进入dist
     - pwd
     - whoami # gitlab-runner
@@ -325,7 +326,7 @@ http{
     # ... 省略
 }
 ```
-重启，终于可以正常访问了
+#### 重启，终于可以正常访问了
 ![end](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/end.jpg)
 
 #### 我们修改代码，并提交，等待构建完成，刷新页面，可以看到修改已成功添加
