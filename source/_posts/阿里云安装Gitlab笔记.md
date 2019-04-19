@@ -8,7 +8,7 @@ category: Linux
 ---
 ### 前置工作
 1. 一台阿里云服务器（2核4G以上）
-2. 配置服务器入方向安全组规则（阿里云安全组出方向默认允许所有访问，所以不用配置）
+2. 配置服务器入方向安全组规则，我这里配置了8888端口（阿里云安全组出方向默认允许所有访问，所以不用配置）
 
 ![配置入方向安全组](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/safe-group.jpg)
 
@@ -20,7 +20,7 @@ category: Linux
 ```
 lsb_release -a
 ```
-#### 在CentOS 7(以及RedHat/Oracle/Science Linux 7)上，使用下面的命令还将在系统防火墙中打开HTTP和SSH访问。
+#### 在CentOS 7(以及RedHat/Oracle/Science Linux 7)上，使用下面的命令打开系统防火墙中的HTTP和SSH访问。
 ```
 sudo yum install -y curl policycoreutils-python openssh-server
 sudo systemctl enable sshd
@@ -92,7 +92,7 @@ gitlab-ctl reconfigure
 经过上面，的安装与设置，就可以访问域名或者IP了。
 打开xx.xx.xxx.xx:8888，需要设置`root帐号`的密码，之后即可使用root帐号登录。
 这里忘记截图了，就附上用户设置的一张截图吧
-![设置](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/gitlab-success.jpg)
+![设置](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/gitlab-user-setting.jpg)
 ### 附:
 Gitlab常用命令：
 ```
