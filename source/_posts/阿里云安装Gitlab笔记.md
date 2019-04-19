@@ -91,7 +91,8 @@ gitlab-ctl reconfigure
 ### Step3：登录
 经过上面，的安装与设置，就可以访问域名或者IP了。
 打开xx.xx.xxx.xx:8888，需要设置`root帐号`的密码，之后即可使用root帐号登录。
-
+这里忘记截图了，就附上用户设置的一张截图吧
+![设置](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/gitlab-success.jpg)
 ### 附:
 Gitlab常用命令：
 ```
