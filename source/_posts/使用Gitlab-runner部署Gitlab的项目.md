@@ -52,7 +52,7 @@ ls -a
 ```
 #### 在机器A上输入以下命令，将机器A的公钥发送给机器B
 ```
-ssh-copy-id xx.xx.xxx.xx # 机器B的公网IP
+ssh-copy-id root@xx.xx.xxx.xx # 机器B的公网IP
 ```
 #### 接着按提示输入yes或回车，最后需要输入机器B的密码，成功的话将会看到
 ```
