@@ -349,6 +349,7 @@ else if (newStartIdx > newEndIdx) {
 }
 ```
 直接看源码感觉头都炸了，这里通过画图的方式会更合适一些。
+`注意：以下每张图之间没有联系`
 
 首先会在新旧Lists的头尾定义各定义一个标记，分别为：oldStartIdx，oldEndIdx，newStartIdx，newEndIdx，用图表示是这个样子：
 ![diff-pic1](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff3.jpg)
@@ -366,6 +367,13 @@ oldEndVnode与newEndVnode都后退一格
 ![diff-pic2](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff5.jpg)
 
 3. oldStartVnode, newEndVnode相同的情况：
+这种情况下意味着当前 `旧Lists的StartIdx位置的元素`，在`新Lists中`被挪到了`EndIdx位置`（Vnode moved right）
+在执行完patchVnode方法之后，在真实DOM中我们还要将 `oldStart 插到 oldEnd之后`
+![diff-pic3](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff6.jpg)
+
+4. oldEndVnode, newStartVnode相同的情况：
+这种情况下意味着当前 `旧Lists的EndIdx位置的元素`，在`新Lists中`被挪到了`StartIdx位置`（Vnode moved left）
+在执行完patchVnode方法之后，在真实DOM中我们还要将 `oldEnd 插到 oldStart之前`
 ![diff-pic3](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff6.jpg)
 
 ### 参考
