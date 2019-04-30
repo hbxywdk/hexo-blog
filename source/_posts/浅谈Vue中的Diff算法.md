@@ -368,12 +368,12 @@ oldEndVnode与newEndVnode都后退一格
 
 3. oldStartVnode, newEndVnode相同的情况：
 这种情况下意味着当前 `旧Lists的StartIdx位置的元素`，在`新Lists中`被挪到了`EndIdx位置`（Vnode moved right）
-在执行完patchVnode方法之后，在真实DOM中我们还要将 `oldStart 插到 oldEnd之后`
+在执行完patchVnode方法之后，在`真实DOM中`我们还要将 `oldStart 插到 oldEnd之后`
 ![diff6](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff6.jpg)
 
 4. oldEndVnode, newStartVnode相同的情况：
 这种情况下意味着当前 `旧Lists的EndIdx位置的元素`，在`新Lists中`被挪到了`StartIdx位置`（Vnode moved left）
-在执行完patchVnode方法之后，在真实DOM中我们还要将 `oldEnd 插到 oldStart之前`
+在执行完patchVnode方法之后，在`真实DOM中`我们还要将 `oldEnd 插到 oldStart之前`
 ![diff7](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff7.jpg)
 
 `ELSE！`如果上面四种情况都比对不中，也是就出现下图的情况：
@@ -412,7 +412,8 @@ vnodeToMove = oldCh[idxInOld] // 这个就是我们找到的`旧的vnode`
 如果相同：
 执行patchVnode
 oldCh[idxInOld]赋undefined // oldCh[idxInOld] = undefined ，我们已经用vnodeToMove保存了一份了
-然后在真实DOM中，`把vnodeToMove插入到oldStart之前`
+然后在`真实DOM中`，`把vnodeToMove插入到oldStart之前`
+newStartVnode都前进一格
 放代码把：
 ```
 vnodeToMove = oldCh[idxInOld]
@@ -426,10 +427,39 @@ if (sameVnode(vnodeToMove, newStartVnode)) {
 
 - 二、key相同，但sameVnode比较出来不相同
 这种情况下则调用createElm创建一个新的元素插到oldStart前面
+newStartVnode都前进一格
 ![diff10](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff10.jpg)
 
+6. 我们在哈希表中！！！没有找到oldVnode！！！节点：
+这种情况下和 5 中的第二种情况一模一样
+调用createElm创建一个新的元素插到oldStart前面
+newStartVnode都前进一格
+
+7. 到了这一步，while已经循环完毕了，接下来要处理新旧List长短不相同的情况
+- 一、oldStartIdx > oldEndIdx，oldStart 超过了oldEnd，说明`新List比旧Lists长`
+我们需要把没遍历到的vnode选出来，用refElm存一下，然后啊，使用addVnodes批量调用创建（createElm）把这些vnode加到真实DOM中
+```
+if (oldStartIdx > oldEndIdx) {
+  refElm = isUndef(newCh[newEndIdx + 1]) ? null : newCh[newEndIdx + 1].elm
+  addVnodes(parentElm, refElm, newCh, newStartIdx, newEndIdx, insertedVnodeQueue)
+}
+```
+![diff11](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff11.jpg)
+
+- 二、newStartIdx > newEndIdx，说明`旧List比新Lists长`
+我们调用removeVnodes方法，参数包含oldStartIdx 与 oldEndIdx，把多余的删掉
+```
+if{
+  // code...
+}
+else if (newStartIdx > newEndIdx) {
+  removeVnodes(parentElm, oldCh, oldStartIdx, oldEndIdx)
+}
+```
+![diff12](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff12.jpg)
 
 
+## 未完待续
 
 
 ### 参考
