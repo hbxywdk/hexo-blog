@@ -365,6 +365,9 @@ oldEndVnode与newEndVnode都后退一格
 完成这些操作就变成了下图这样：
 ![diff-pic1](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff-pic3.jpg)
 
+3. oldStartVnode, newEndVnode相同的情况：
+![diff-pic1](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff-pic3.jpg)
+
 ### 参考
 > [高频dom操作和页面性能优化探索](https://blog.csdn.net/u013929284/article/details/56483035)
 > [React’s diff algorithm](https://calendar.perfplanet.com/2013/diff/)
