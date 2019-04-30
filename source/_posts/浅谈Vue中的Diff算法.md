@@ -135,7 +135,7 @@ function sameVnode (a, b) {
   )
 }
 ```
-3. patch：对比新、老vnode，进行最小程度的修改（未完成）
+3. patch：对比新、老vnode，进行最小程度的修改`（未完成先别看）`
 ```
   function patch (oldVnode, vnode, hydrating, removeOnly) {
     // vnode不存在则调用oldVnode的销毁钩子
@@ -217,7 +217,7 @@ function sameVnode (a, b) {
 }
 
 ```
-4. patchVnode：修补vnode（未完成）
+4. patchVnode：修补vnode`（未完成先别看）`
 ```
 // 当新旧vnode都有子节点时，则会进入updateChildren方法对比子节点
 ```
@@ -352,36 +352,34 @@ else if (newStartIdx > newEndIdx) {
 `注意：以下每张图之间没有联系`
 
 首先会在新旧Lists的头尾定义各定义一个标记，分别为：oldStartIdx，oldEndIdx，newStartIdx，newEndIdx，用图表示是这个样子：
-![diff-pic1](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff3.jpg)
+![diff3](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff3.jpg)
 
 1. oldStartVnode, newStartVnode相同的情况：
 执行patchVnode方法
 oldStartVnode与newStartVnode都前进一格
 完成这些操作就变成了下图这样：
-![diff-pic2](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff4.jpg)
+![diff4](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff4.jpg)
 
 2. oldEndVnode, newEndVnode相同的情况：
 执行patchVnode方法
 oldEndVnode与newEndVnode都后退一格
 完成这些操作就变成了下图这样：
-![diff-pic3](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff5.jpg)
+![diff5](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff5.jpg)
 
 3. oldStartVnode, newEndVnode相同的情况：
 这种情况下意味着当前 `旧Lists的StartIdx位置的元素`，在`新Lists中`被挪到了`EndIdx位置`（Vnode moved right）
 在执行完patchVnode方法之后，在真实DOM中我们还要将 `oldStart 插到 oldEnd之后`
-![diff-pic4](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff6.jpg)
+![diff6](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff6.jpg)
 
 4. oldEndVnode, newStartVnode相同的情况：
 这种情况下意味着当前 `旧Lists的EndIdx位置的元素`，在`新Lists中`被挪到了`StartIdx位置`（Vnode moved left）
 在执行完patchVnode方法之后，在真实DOM中我们还要将 `oldEnd 插到 oldStart之前`
-![diff-pic5](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff7.jpg)
+![diff7](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff7.jpg)
 
-如果上面四种情况都比对不中，也是就出现下图的情况：
-![diff-pic6](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff8.jpg)
+`ELSE！`如果上面四种情况都比对不中，也是就出现下图的情况：
+![diff8](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff8.jpg)
 
 则会执行 `createKeyToOldIdx` 方法，
-返回一个 哈希表(obj)，各项 键为 vnode 的 key属性，值为 vnode 的下标
-哈希表中的内容包含处于 oldStart 至 oldEnd 的 vnode 
 ```
 function createKeyToOldIdx (children, beginIdx, endIdx) {
   let i, key
@@ -393,9 +391,44 @@ function createKeyToOldIdx (children, beginIdx, endIdx) {
   return map
 }
 ```
-接着从哈希表中寻找是否有与newStartVnode一致key的oldVNode节点
+返回一个 哈希表(obj)，各项 键为 vnode 的 key属性，值为 vnode 的下标
+哈希表中的内容包含处于 oldStart 至 oldEnd 的 vnode，大概长这样：
+```
+{
+  vnodeKeyA: 1,
+  vnodeKeyC: 2,
+  vnodeKeyD: 3
+}
+```
+接着从哈希表中寻找是否有与newStartVnode`一致key`的oldVNode节点
+接着看下面第5条：
 
-5. 
+5. 我们在哈希表中找到了oldVnode节点：
+```
+vnodeToMove = oldCh[idxInOld] // 这个就是我们找到的`旧的vnode`
+```
+这里还分了两种情况
+- 一、`光比较key，肯定不足以判断两个vnode相同`，我着这里再调用sameVnode(vnodeToMove, newStartVnode)方法来对比
+如果相同：
+执行patchVnode
+oldCh[idxInOld]赋undefined // oldCh[idxInOld] = undefined ，我们已经用vnodeToMove保存了一份了
+然后在真实DOM中，`把vnodeToMove插入到oldStart之前`
+放代码把：
+```
+vnodeToMove = oldCh[idxInOld]
+if (sameVnode(vnodeToMove, newStartVnode)) {
+  patchVnode(vnodeToMove, newStartVnode, insertedVnodeQueue, newCh, newStartIdx)
+  oldCh[idxInOld] = undefined
+  canMove && nodeOps.insertBefore(parentElm, vnodeToMove.elm, oldStartVnode.elm)
+} else {}
+```
+![diff9](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff9.jpg)
+
+- 二、key相同，但sameVnode比较出来不相同
+这种情况下则调用createElm创建一个新的元素插到oldStart前面
+![diff10](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff10.jpg)
+
+
 
 
 
