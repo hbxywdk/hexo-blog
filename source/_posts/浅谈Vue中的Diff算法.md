@@ -351,22 +351,22 @@ else if (newStartIdx > newEndIdx) {
 直接看源码感觉头都炸了，这里通过画图的方式会更合适一些。
 
 首先会在新旧Lists的头尾定义各定义一个标记，分别为：oldStartIdx，oldEndIdx，newStartIdx，newEndIdx，用图表示是这个样子：
-![diff-pic1](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff-pic1.jpg)
+![diff-pic1](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff3.jpg)
 
 1. oldStartVnode, newStartVnode相同的情况：
 执行patchVnode方法
 oldStartVnode与newStartVnode都前进一格
 完成这些操作就变成了下图这样：
-![diff-pic1](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff-pic2.jpg)
+![diff-pic1](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff4.jpg)
 
 2. oldEndVnode, newEndVnode相同的情况：
 执行patchVnode方法
 oldEndVnode与newEndVnode都后退一格
 完成这些操作就变成了下图这样：
-![diff-pic1](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff-pic3.jpg)
+![diff-pic2](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff5.jpg)
 
 3. oldStartVnode, newEndVnode相同的情况：
-![diff-pic1](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff-pic3.jpg)
+![diff-pic3](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff6.jpg)
 
 ### 参考
 > [高频dom操作和页面性能优化探索](https://blog.csdn.net/u013929284/article/details/56483035)
