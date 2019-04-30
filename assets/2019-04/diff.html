@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+</head>
+<style>
+  *{
+    margin: 0; padding: 0;
+  }
+  html,body{
+    width: 100%; height: 100%;
+    position: relative;
+  }
+  .main{
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate3d(-50%, -50%, 0);
+    padding: 30px 30px 30px 110px;
+  }
+  ul{ list-style: none; position: relative; }
+  ul.oldVnode::after{ content: 'oldVnodeChs'; }
+  ul.newVnode::after{ content: 'newVnodeChs'; }
+  ul.oldVnode::after, ul.newVnode::after{ position: absolute; left: -110px; top: 50%; transform: translateY(-50%); color: #52435f; font-weight: bold;}
+  ul li{ display: inline-block; border-radius: 50%; border: 3px solid #60bdff; text-align: center; 
+    width: 50px; height: 50px; line-height: 50px;font-size: 18px; margin: 20px; position: relative;}
+  .oldStartIdx::after,.oldEndIdx::after,.newStartIdx::after,.newEndIdx::after{
+    font-size: 13px;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    color: red;
+  }
+  .oldStartIdx::after{
+    content: 'oldStartIdx';
+    top: -45px;
+  }
+  .oldEndIdx::after{
+    content: 'oldEndIdx';
+    top: -45px;
+  }
+  .newStartIdx::after{
+    content: 'newStartIdx';
+    top: 45px;
+  }
+  .newEndIdx::after{
+    content: 'newEndIdx';
+    top: 45px;
+  }
+</style>
+<body>
+  <div class="main">
+    <ul class="oldVnode">
+      <li>A</li>
+      <li>B</li>
+      <li>C</li>
+      <li class="oldStartIdx">1</li>
+      <li class="oldEndIdx">2</li>
+      <li>D</li>
+    </ul>
+    <ul class="newVnode">
+      <li>A</li>
+      <li>B</li>
+      <li class="newEndIdx">C</li>
+      <li class="newStartIdx">D</li>
+    </ul>
+  </div>
+</body>
+</html>
