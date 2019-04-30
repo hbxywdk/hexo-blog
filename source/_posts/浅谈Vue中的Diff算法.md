@@ -358,23 +358,46 @@ else if (newStartIdx > newEndIdx) {
 执行patchVnode方法
 oldStartVnode与newStartVnode都前进一格
 完成这些操作就变成了下图这样：
-![diff-pic1](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff4.jpg)
+![diff-pic2](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff4.jpg)
 
 2. oldEndVnode, newEndVnode相同的情况：
 执行patchVnode方法
 oldEndVnode与newEndVnode都后退一格
 完成这些操作就变成了下图这样：
-![diff-pic2](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff5.jpg)
+![diff-pic3](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff5.jpg)
 
 3. oldStartVnode, newEndVnode相同的情况：
 这种情况下意味着当前 `旧Lists的StartIdx位置的元素`，在`新Lists中`被挪到了`EndIdx位置`（Vnode moved right）
 在执行完patchVnode方法之后，在真实DOM中我们还要将 `oldStart 插到 oldEnd之后`
-![diff-pic3](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff6.jpg)
+![diff-pic4](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff6.jpg)
 
 4. oldEndVnode, newStartVnode相同的情况：
 这种情况下意味着当前 `旧Lists的EndIdx位置的元素`，在`新Lists中`被挪到了`StartIdx位置`（Vnode moved left）
 在执行完patchVnode方法之后，在真实DOM中我们还要将 `oldEnd 插到 oldStart之前`
-![diff-pic3](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff6.jpg)
+![diff-pic5](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff7.jpg)
+
+如果上面四种情况都比对不中，也是就出现下图的情况：
+![diff-pic6](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-04/diff8.jpg)
+
+则会执行 `createKeyToOldIdx` 方法，
+返回一个 哈希表(obj)，各项 键为 vnode 的 key属性，值为 vnode 的下标
+哈希表中的内容包含处于 oldStart 至 oldEnd 的 vnode 
+```
+function createKeyToOldIdx (children, beginIdx, endIdx) {
+  let i, key
+  const map = {}
+  for (i = beginIdx; i <= endIdx; ++i) {
+    key = children[i].key
+    if (isDef(key)) map[key] = i
+  }
+  return map
+}
+```
+接着从哈希表中寻找是否有与newStartVnode一致key的oldVNode节点
+
+5. 
+
+
 
 ### 参考
 > [高频dom操作和页面性能优化探索](https://blog.csdn.net/u013929284/article/details/56483035)
