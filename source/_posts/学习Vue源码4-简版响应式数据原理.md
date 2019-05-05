@@ -1,5 +1,5 @@
 ---
-title: 学习Vue源码4
+title: 学习Vue源码4-简版响应式数据原理
 date: 2019-03-15 17:12:10
 summary: 
 desc: 
