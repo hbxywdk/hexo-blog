@@ -14,7 +14,7 @@ category: Vue
 - 调用 mountComponent ，其中的 `vm._render()` 将 `render函数` 转化为 `vNode`。
 - `vm._update()` 以生成的 `vNode` 为参数发布更新。
 
-### vm._render
+### vm._render()
 ```
 core\instance\render.js
 Vue.prototype._render = function (): VNode {
@@ -257,11 +257,43 @@ export function resolveAsset (
 }
 ```
 最终生成了vNode：
-![vNode]()
+![vNode](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-05/vNode.jpg)
 
 
-### vm_update()
+### vm._update()
 ```
-core\instance\lifecycle.js
+// core\instance\lifecycle.js
+Vue.prototype._update = function (vnode: VNode, hydrating?: boolean) {
+  const vm: Component = this
+  const prevEl = vm.$el
+  const prevVnode = vm._vnode
+  const restoreActiveInstance = setActiveInstance(vm)
+  vm._vnode = vnode
 
+  // 没有vm._vnode说明没有 mount过，这里走初始化流程
+  if (!prevVnode) {
+    // initial render
+    vm.$el = vm.__patch__(vm.$el, vnode, hydrating, false /* removeOnly */)
+  }
+  // 有vm._vnode说明已经 mount过，这里走更新流程
+  else {
+    // updates
+    vm.$el = vm.__patch__(prevVnode, vnode)
+  }
+  
+  restoreActiveInstance()
+
+  // 更新 __vue__ 引用
+  if (prevEl) {
+    prevEl.__vue__ = null
+  }
+  if (vm.$el) {
+    vm.$el.__vue__ = vm
+  }
+  if (vm.$vnode && vm.$parent && vm.$vnode === vm.$parent._vnode) {
+    vm.$parent.$el = vm.$el
+  }
+}
 ```
+这里的 `vm.__patch__` 就是 `core\vdom\patch.js` 中的 `patch` 方法。
+#### `之后 patch函数 会使用 diff 算法来更新 DOM。`
