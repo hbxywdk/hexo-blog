@@ -149,7 +149,11 @@ export const createCompiler = createCompilerCreator(function baseCompile (
       Vue最终编译template的结果和我们直接用createElement手写render函数没两样。
     */
     render: code.render,
-    // staticRenderFns与diff算法优化相关，会在编译后给不会变化的vNode节点打上static为true的标签
+    // staticRenderFns 存放纯静态 render函数（就是没有使用data中的数据），比如这一段：
+    // var v = new Vue({
+    //   el: '.arrow', data: { a: 1 }, template: '<div>hello</div>'
+    // })
+    // console.log(v.$options.staticRenderFns) // 这里输出就会看到里面的东西
     staticRenderFns: code.staticRenderFns
   }
 })
@@ -253,4 +257,5 @@ new Watcher(vm, updateComponent, noop, {
 ### 总结
 - 获得模版 `template`。
 - 调用 compileToFunctions 获得 template 对应的 `render函数`。
-- 调用 mountComponent ，其中的 `vm._render()` 将 `render函数` 转化为 `vNode`，`vm._update` 以生成的 `vNode` 为参数发布更新。
+- 调用 mountComponent ，其中的 `vm._render()` 将 `render函数` 转化为 `vNode`。
+- `vm._update()` 以生成的 `vNode` 为参数发布更新。
