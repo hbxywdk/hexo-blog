@@ -1,6 +1,6 @@
 ---
-title: 学习Vue源码-Vue事件机制
-date: 2019-05-13 16:33:53
+title: 学习Vue源码10-Vue事件机制
+date: 2019-05-14 10:26:53
 summary: 
 desc: 
 tag: 
@@ -21,7 +21,11 @@ renderMixin(Vue)
 
 export default Vue
 ```
-### 在this._init()方法中调用了initEvents(vm)初始化了Events；
+
+### 自定义事件
+用法见[自定义事件文档](https://vue.docschina.org/v2/api/#vm-on)
+
+#### 在this._init()方法中调用了initEvents(vm)初始化了Events；
 ```
 core\instance\events.js
 // 初始化事件
@@ -37,8 +41,16 @@ export function initEvents (vm: Component) {
   }
 }
 ```
+vm._events，它是一个空对象，用来存放自定义事件
+后面经过$on方法之后vm._event会变成这个样子：
+```
+  vm._events = {
+    eventName1: [fna1, fna2],
+    eventName2: [fnb1, fnb2]
+  }
+```
 
-### eventsMixin()方法，在Vue.prototype上定义了 $on 、$once、$off、$emit 四个方法；
+#### eventsMixin()方法，在Vue.prototype上定义了 $on 、$once、$off、$emit 四个方法；
 
 #### $on
 定义事件
@@ -61,13 +73,6 @@ export function initEvents (vm: Component) {
       }
     }
     return vm
-  }
-```
-经过$on方法之后vm._event会变成这个样子：
-```
-  vm._events = {
-    eventName1: [fna1, fna2],
-    eventName2: [fnb1, fnb2]
   }
 ```
 
@@ -160,6 +165,7 @@ export function initEvents (vm: Component) {
   }
 ```
 
+#### 另外
 core\instance\state.js 中 initState内根据参数会调用 initProps、initMethods、initData、initComputed、initWatch方法
 `initMethods将每一个方法绑定在vm上，故可以以this.methodName()来调用methods{}中的方法`
 
@@ -168,7 +174,7 @@ core\instance\state.js 中 initState内根据参数会调用 initProps、initMet
 
 ### HTML事件
 事件在何时进行绑定呢？
-当然是在 vm.$mount 方法的执行中
+当然是在 vm.$mount 方法调用之后的方法中
 
 看下面一段代码：
 ```
@@ -191,12 +197,12 @@ with(this){return _c('div',{on:{"click":b}},[_v(_s(a))])}
 ```
 在render函数中可以看到 {on:{"click":b}} 是_c的参数，在之前的文章我有提到 `_c 其实就是 createElement 这个方法`
 
-执行 render 函数返回vNode树，对应的事件在 data 参数里，事件的绑定和代码运行环境有关（浏览器 和 Weex）
+执行 render 函数返回VNode Tree，对应的事件在 data 参数里，事件的绑定和代码运行环境有关（浏览器 和 Weex）
 
 浏览器环境下：
 platforms\web\runtime\modules\events.js
 ```
-function add ( // 添加
+function add ( // 添加事件
   name: string,
   handler: Function,
   capture: boolean,
@@ -214,7 +220,7 @@ function add ( // 添加
   )
 }
 
-function remove ( // 移除
+function remove ( // 移除事件
   name: string,
   handler: Function,
   capture: boolean,
@@ -260,8 +266,14 @@ var vm = new Vue({
   components: {
     'test': {
       template: "<div @click='cfn'>Child Text</div>",
+      mounted() {
+        this.$on('show', () => {
+          alert('XXX')
+        })
+      },
       methods: {
         cfn: function () {
+          // console.log(this._events.show[0]) // createFnInvoker
           console.log('Child Method')
           this.$emit('show')
         }
@@ -278,22 +290,45 @@ console.log(vm.$options.render)
 with(this){return _c('div',[_v("Father Text "),_c('test',{on:{"show":fn}})],1)}
 }
 ```
-如果是组件的情况下，_createElement会调用 `createComponent(Ctor, data, context, children, tag)` 来创建组件
-
+如果是组件的情况下，_createElement会调用 `createComponent(Ctor, data, context, children, tag)` 来创建组件（事件参数在data里）
+看下createComponent方法：
 ```
 core\vdom\create-component.js
+export function createComponent (
+  Ctor: Class<Component> | Function | Object | void,
+  data: ?VNodeData,
+  context: Component,
+  children: ?Array<VNode>,
+  tag?: string
+): VNode | Array<VNode> | void {
+  // code... 省略代码
 
-  // extract listeners, since these needs to be treated as
-  // child component listeners instead of DOM listeners
-  // 提取侦听器，因为需要将这些侦听器视为子组件侦听器而不是DOM侦听器。
+  // extract listeners, since these needs to be treated as child component listeners instead of DOM listeners
+  // 提取data参数里的事件(data.on)，这些事件会被作为为子组件事件侦听而不是DOM侦听。
   const listeners = data.on
-  // replace with listeners with .native modifier
-  // so it gets processed during parent component patch.
-  // 替换为.NATIVE修饰符的侦听器，以便在父组件修补程序期间对其进行处理。
+  // replace with listeners with .native modifier so it gets processed during parent component patch.
+  // data大概长这样{on: {'click': fn1}, nativeOn: {'click': fn2}}
+  // data.nativeOn内存放 在组件上绑定了具有.native修饰符的事件，这些事件最终会被绑定在DOM上，其他的事件仍然走Vue自定义事件那一套。
   data.on = data.nativeOn
+  // 这里用 listeners 缓存了原有的 data.on ，再用 data.nativeOn 来覆盖 原有data.on
+
+  // code... 省略代码
+
+  // 实例化一个VNode，返回
+  const vnode = new VNode(
+    `vue-component-${Ctor.cid}${name ? `-${name}` : ''}`,
+    data, undefined, undefined, undefined, context,
+    { Ctor, propsData, listeners, tag, children },
+    asyncFactory
+  )
+
+  // code... 省略代码
+
+  return vnode
+}
 ```
-如果绑定在组件上的事件又.native修饰符，该事件最终会和上面一样绑在DOM上，
-如果没有，那么我们回到 core\instance\events.js 文件，看 initEvents 方法
+`如果绑定在组件上的事件又.native修饰符，该事件最终会绑定在DOM上`
+我们回到 core\instance\events.js 文件，看 initEvents 方法
 ```
 // 初始化事件
 export function initEvents (vm: Component) {
@@ -307,7 +342,7 @@ export function initEvents (vm: Component) {
   vm._hasHookEvent = false
   // init parent attached events
   👇
-  // 这个是父组件上添加的事件监听，HTML上的事件不走这里
+  // 这个 listeners 是父组件上添加的事件监听，HTML上的事件不走这里，大概长这样 {'eventName', fn}
   const listeners = vm.$options._parentListeners
   if (listeners) {
     updateComponentListeners(vm, listeners)
@@ -316,8 +351,18 @@ export function initEvents (vm: Component) {
 }
 
 ```
-箭头所指这一段代码，说明绑定在组件上的自定义事件会交由 updateComponentListeners 方法处理：
+箭头所指这一段代码，说明绑定在组件上的`自定义事件`会交由 `updateComponentListeners` 方法处理：
 ```
+core\instance\events.js
+
+function add (event, fn) {
+  target.$on(event, fn)
+}
+
+function remove (event, fn) {
+  target.$off(event, fn)
+}
+
 export function updateComponentListeners (
   vm: Component,
   listeners: Object,
@@ -327,12 +372,9 @@ export function updateComponentListeners (
   updateListeners(listeners, oldListeners || {}, add, remove, createOnceHandler, vm)
   target = undefined
 }
-
 ```
 
-### 今天先到这把
-
-好吧，在跳转到 updateListeners 方法：
+updateComponentListeners 调用了 updateListeners。好吧，再跳转到 updateListeners 方法：
 ```
 core\vdom\helpers\update-listeners.js
 export function updateListeners (
@@ -344,15 +386,17 @@ export function updateListeners (
   vm: Component
 ) {
   let name, def, cur, old, event
+  // 遍历on
   for (name in on) {
     def = cur = on[name]
     old = oldOn[name]
     event = normalizeEvent(name)
-    /* istanbul ignore if */
+    /* istanbul ignore if WEEX的处理 */
     if (__WEEX__ && isPlainObject(def)) {
       cur = def.handler
       event.params = def.params
     }
+    // 事件不存在会在非生产模式下报警告
     if (isUndef(cur)) {
       process.env.NODE_ENV !== 'production' && warn(
         `Invalid handler for event "${event.name}": got ` + String(cur),
@@ -362,15 +406,19 @@ export function updateListeners (
       if (isUndef(cur.fns)) {
         cur = on[name] = createFnInvoker(cur, vm)
       }
+      // 处理只触发一次的自定义事件
       if (isTrue(event.once)) {
         cur = on[name] = createOnceHandler(event.name, cur, event.capture)
       }
+      // 添加事件
       add(event.name, cur, event.capture, event.passive, event.params)
     } else if (cur !== old) {
       old.fns = cur
       on[name] = old
     }
   }
+  
+  // 遍历oldOn，移除on中已经移除的事件
   for (name in oldOn) {
     if (isUndef(on[name])) {
       event = normalizeEvent(name)
@@ -379,3 +427,6 @@ export function updateListeners (
   }
 }
 ```
+updateListeners 主要是两个 for in 循环，分别循环了 on 与 oldOn，`遍历 on 来添加自定义事件，遍历 oldOn 来移除已经删掉的事件。`
+
+Vue的事件机制到这里就差不多分析完了。
