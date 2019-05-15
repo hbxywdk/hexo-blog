@@ -142,6 +142,6 @@ createContext 创建了 context，并在 context、request、response 上挂载�
     return fnMiddleware(ctx).then(handleResponse).catch(onerror);
   }
 ```
-主要看这句 `fnMiddleware(ctx).then(handleResponse).catch(onerror)`，这里使用 Promise.resolve() 依次执行各中间件，最后执行.then()，结束一个请求。
+主要看这句 `fnMiddleware(ctx).then(handleResponse).catch(onerror)`，这里使用 Promise.resolve() 依次执行各中间件，最后执行.then()，结束请求。
 
 
