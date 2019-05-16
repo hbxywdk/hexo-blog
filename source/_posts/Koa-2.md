@@ -1,6 +1,6 @@
 ---
-title: 学习KOA源码2
-date: 2019-05-15 17:49:37
+title: 学习Koa源码2
+date: 2019-05-16 14:24:37
 summary: 
 desc: 
 tag: 
@@ -110,5 +110,92 @@ run().then(function () {
 
 
 ### context.js
+```
+const proto = module.exports = {
+  inspect() {}, // util.inspect() implementation, which just returns the JSON output.
+  toJSON() {}, // Return JSON representation.
+  assert: httpAssert, // http 断言，与 node 的 assert() 方法类似.
+  throw() {}, // 引用了 http-errors 库，用于抛错
+  onerror() {}, // 默认的错误处理
+  get cookies() {
+    if (!this[COOKIES]) {
+      this[COOKIES] = new Cookies(this.req, this.res, {
+        keys: this.app.keys,
+        secure: this.request.secure
+      });
+    }
+    return this[COOKIES];
+  },
 
-#### 未完待续
+  set cookies(_cookies) {
+    this[COOKIES] = _cookies;
+  }
+}
+```
+context.js 主要定义了几个方法（省略了具体代码），这些方法都可以通过 ctx.xxxx 调用，context 主要还是用来挂载 request、response 等对象的。
+
+### request.js 与 response.js
+这两个文件结构一样，都是一些 getter、setter 函数，这些方法同样被挂载到了 ctx 上，包括下面一些：
+
+#### Request 别名
+以下访问器和 Request 别名等效：
+```
+ctx.header
+ctx.headers
+ctx.method
+ctx.method=
+ctx.url
+ctx.url=
+ctx.originalUrl
+ctx.origin
+ctx.href
+ctx.path
+ctx.path=
+ctx.query
+ctx.query=
+ctx.querystring
+ctx.querystring=
+ctx.host
+ctx.hostname
+ctx.fresh
+ctx.stale
+ctx.socket
+ctx.protocol
+ctx.secure
+ctx.ip
+ctx.ips
+ctx.subdomains
+ctx.is()
+ctx.accepts()
+ctx.acceptsEncodings()
+ctx.acceptsCharsets()
+ctx.acceptsLanguages()
+ctx.get()
+```
+
+#### Response 别名
+以下访问器和 Response 别名等效：
+```
+ctx.body
+ctx.body=
+ctx.status
+ctx.status=
+ctx.message
+ctx.message=
+ctx.length=
+ctx.length
+ctx.type=
+ctx.type
+ctx.headerSent
+ctx.redirect()
+ctx.attachment()
+ctx.set()
+ctx.append()
+ctx.remove()
+ctx.lastModified=
+ctx.etag=
+```
+#### END
+
+### 引用
+> [https://koa.bootcss.com](https://koa.bootcss.com)
