@@ -1,45 +1,13 @@
 ---
 title: Hello World
-date: 2015-10-14 09:00:00
+date: 2018-10-14 09:00:00
 summary: 
 desc: 
 tag: 
 category: 
 ---
-# My first day.
 
-Welcome to [Hexo](https://hexo.io/)! This is your very first post. Check [documentation](https://hexo.io/docs/) for more info. If you get any problems when using Hexo, you can find the answer in [troubleshooting](https://hexo.io/docs/troubleshooting.html) or you can ask me on [GitHub](https://github.com/hexojs/hexo/issues).
-
-## Quick Start
-
-### Create a new post
-
-``` bash
-$ hexo new "My New Post"
-```
-
-More info: [Writing](https://hexo.io/docs/writing.html)
-
-### Run server
-
-``` bash
-$ hexo server
-```
-
-More info: [Server](https://hexo.io/docs/server.html)
-
-### Generate static files
-
-``` bash
-$ hexo generate
-```
-
-More info: [Generating](https://hexo.io/docs/generating.html)
-
-### Deploy to remote sites
-
-``` bash
-$ hexo deploy 
-```
-
-More info: [Deployment](https://hexo.io/docs/deployment.html)
+早在两年前就有搞过一个hexo的博客，但是因为种种原因（懒癌）一直没有更新过。之后偶尔在简书、掘金上记录过一些东西。
+今天重新开坑，又一次搞了hexo的博客，暂时没有打算弄域名，直接用github的。
+写的东西可能不是那么高大上，可能是工作中遇到的坑或者是对于某些知识的学习笔记，不过这都不重要，重要的是希望自己可以坚持写下去。
+有空的话或许会把以前写过的一些东西搬到这边来，随缘。
