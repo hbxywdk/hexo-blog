@@ -235,18 +235,26 @@ export default class Watcher {
 
 
 ### Computed
+#### 第一部分代码
 ```
 core\instance\state.js
+
+// 初始化 computed
+const computedWatcherOptions = { lazy: true }
+
 function initComputed (vm: Component, computed: Object) {
   // watchers = vm._computedWatchers = 空对象
   const watchers = vm._computedWatchers = Object.create(null)
+
   // computed properties are just getters during SSR
   const isSSR = isServerRendering()
 
   // 遍历 computed 
   for (const key in computed) {
     const userDef = computed[key]
-    const getter = typeof userDef === 'function' ? userDef : userDef.get // 正确获取要计算的值
+    // 如果定义的 computed 是函数，则获取函数，如果是 getter、setter 形式，则获取 get函数
+    const getter = typeof userDef === 'function' ? userDef : userDef.get
+
     if (process.env.NODE_ENV !== 'production' && getter == null) {
       warn(
         `Getter is missing for computed property "${key}".`,
@@ -255,19 +263,25 @@ function initComputed (vm: Component, computed: Object) {
     }
 
     // 非服务端渲染下 赋值 watchers[key] 为 Watcher
-    // 比如赋值后 watchers 变为 { 'dataName': new Watcher(args) }
+    // 比如赋值后 watchers 变为 { 'computedName': new Watcher(args) }
     if (!isSSR) {
       // create internal watcher for the computed property.
-      // computed 属性的内部观察器
+      // 为 computed 属性定义 Watcher
+
+      ------------------------------------ 标注一 ------------------------------------
       watchers[key] = new Watcher(
         vm,
         getter || noop,
         noop,
-        computedWatcherOptions
+        computedWatcherOptions // { lazy: true }
       )
     }
 
-    // vm 上已经定义过与当前 computed 同名属性的话，我们就只需要调用 defineComputed 来定义计算属性。
+    // component-defined computed properties are already defined on the
+    // component prototype. We only need to define computed properties defined
+    // at instantiation here.
+    
+    // 定义过重名的（data、props中），则报错，没有重名则调用 defineComputed
     if (!(key in vm)) {
       defineComputed(vm, key, userDef)
     } else if (process.env.NODE_ENV !== 'production') {
@@ -279,8 +293,38 @@ function initComputed (vm: Component, computed: Object) {
     }
   }
 }
-```
 
+```
+`这里以一个最简单的例子来说明：`
+```
+computed: {
+  fullName: function () {
+    return this.firstName + this.lastName
+  }
+}
+
+```
+首先：const getter = typeof userDef === 'function' ? userDef : userDef.get
+getter 其实就是我们定义的 computed 函数:
+```
+function () {
+  return this.firstName + this.lastName
+}
+```
+然后看`标注一`的位置，这里 `new 了一个 Watcher`
+```
+watchers[key] = new Watcher(
+  vm,
+  getter || noop,
+  noop,
+  computedWatcherOptions // { lazy: true }
+)
+```
+这里只 new Watcher()，Watcher 内部的方法都不会被调用。
+
+之后调用了 defineComputed 方法，我们接着看第二部分代码：
+
+#### 第二部分代码
 ```
 const sharedPropertyDefinition = {
   enumerable: true,
@@ -288,43 +332,6 @@ const sharedPropertyDefinition = {
   get: noop,
   set: noop
 }
-
-export function defineComputed (
-  target: any,
-  key: string,
-  userDef: Object | Function
-) {
-  const shouldCache = !isServerRendering()
-
-  // 修改 sharedPropertyDefinition 的getter/setter
-  // 之后会用 Object.defineProperty 劫持 computed 数据
-  // 获取数据的时候，走 getter 函数，getter 函数会处理我们定义的 computed 函数，并返回结果
-  if (typeof userDef === 'function') {
-    sharedPropertyDefinition.get = shouldCache
-      ? createComputedGetter(key)
-      : createGetterInvoker(userDef)
-    sharedPropertyDefinition.set = noop
-  } else {
-    sharedPropertyDefinition.get = userDef.get
-      ? shouldCache && userDef.cache !== false
-        ? createComputedGetter(key)
-        : createGetterInvoker(userDef.get)
-      : noop
-    sharedPropertyDefinition.set = userDef.set || noop
-  }
-
-  if (process.env.NODE_ENV !== 'production' &&
-      sharedPropertyDefinition.set === noop) {
-    sharedPropertyDefinition.set = function () {
-      warn(
-        `Computed property "${key}" was assigned to but it has no setter.`,
-        this
-      )
-    }
-  }
-  Object.defineProperty(target, key, sharedPropertyDefinition)
-}
-
 
 function createComputedGetter (key) {
   return function computedGetter () {
@@ -346,9 +353,130 @@ function createGetterInvoker(fn) {
     return fn.call(this, this)
   }
 }
+
+export function defineComputed (
+  target: any,
+  key: string,
+  userDef: Object | Function
+) {
+  const shouldCache = !isServerRendering() // isServerRendering() 我们直接认为是 false，所以 shouldCache = true
+
+  // 修改 sharedPropertyDefinition 的getter/setter
+  // 之后会用 Object.defineProperty 劫持 computed 数据
+  // 获取数据的时候，走 getter 函数，getter 函数会处理我们定义的 computed 函数，并返回结果
+
+  // 函数形式的 computed
+  if (typeof userDef === 'function') {
+    ------------------------------------ 标注二 ------------------------------------
+    sharedPropertyDefinition.get = shouldCache
+      ? createComputedGetter(key)
+      : createGetterInvoker(userDef)
+    sharedPropertyDefinition.set = noop
+
+  // getter / setter 形式的 computed 
+  } else {
+    sharedPropertyDefinition.get = userDef.get
+      ? shouldCache && userDef.cache !== false
+        ? createComputedGetter(key)
+        : createGetterInvoker(userDef.get)
+      : noop
+    sharedPropertyDefinition.set = userDef.set || noop
+  }
+
+  if (process.env.NODE_ENV !== 'production' &&
+      sharedPropertyDefinition.set === noop) {
+    sharedPropertyDefinition.set = function () {
+      warn(
+        `Computed property "${key}" was assigned to but it has no setter.`,
+        this
+      )
+    }
+  }
+  Object.defineProperty(target, key, sharedPropertyDefinition)
+}
 ```
-我们定义的 computed 被绑定在 vm 上，defineComputed 函数会劫持我们定义的 computed 数据
-获取数据的时候，走 getter 函数，getter 函数会处理我们定义的 `computed 函数`，并返回结果
+
+我们看`标注二`，这里我们默认只考虑浏览器环境，所以：
+```
+// 假设 key = 'fullName'
+
+sharedPropertyDefinition.get = createComputedGetter(fullName)]
+
+// => 等同于
+
+sharedPropertyDefinition = {
+  enumerable: true,
+  configurable: true,
+  get: function computedGetter () {
+    const watcher = this._computedWatchers && this._computedWatchers['fullName']
+    if (watcher) {
+      if (watcher.dirty) {
+        watcher.evaluate()
+      }
+      if (Dep.target) {
+        ------------------------------------ 标注四 ------------------------------------
+        watcher.depend()
+      }
+      return watcher.value
+    }
+  },
+  set: noop
+}
+
+// 然后使用 Object.defineProperty 对 fullName 进行劫持
+Object.defineProperty(target, key, sharedPropertyDefinition)
+```
+当我们使用 computed 时，就触发了他的 get 方法，然后会调用前面定义的 Watcher 的 evaluate 方法。
+`evaluate 方法会调用 Watcher 的 get`，然后我们转到 Watcher 中看 get 方法：
+
+```
+core\observer\watcher.js
+// Watcher 的 get 方法会被调用
+get () {
+  // 👇 pushTarget(this)，将 Dep.target 赋值为 this（当前Watcher）
+  pushTarget(this)
+  let value
+  const vm = this.vm
+  try {
+    // 要 watch 的获取值
+    ------------------------------------ 标注三 ------------------------------------
+    value = this.getter.call(vm, vm)
+  } catch (e) {
+    if (this.user) {
+      handleError(e, vm, `getter for watcher "${this.expression}"`)
+    } else {
+      throw e
+    }
+  } finally {
+    if (this.deep) {
+      traverse(value)
+    }
+    // 👇 清空 Dep.target
+    popTarget()
+    // 清空依赖
+    this.cleanupDeps()
+  }
+  return value
+}
+
+```
+get 方法首先将 Dep.target 指向当前 Watcher
+接着`标注三`的位置调用了 `this.getter.call(vm, vm)`，也就是 `return this.firstName + this.lastName`。
+然后触发了 firstName 与 lastName 的 getter，将当前 Watcher 添加到 这两个 data 的订阅者列表中，如果 `firstName 与 lastName 发生变化都会调用当前 Watcher 的 update 方法。`
+`同时也算出了 value 值`。
+Watcher 的 update 方法被调用，就会触发 get 方法，获取最新的值，`算出最新的 value`。
+
+最后 return watcher.value
+
+END
+
+TIPS: 这里如果不清楚如何订阅者列表可以去看[这篇](https://hbxywdk.github.io/2019/03/15/%E5%AD%A6%E4%B9%A0Vue%E6%BA%90%E7%A0%814-%E7%AE%80%E7%89%88%E5%93%8D%E5%BA%94%E5%BC%8F%E6%95%B0%E6%8D%AE%E5%8E%9F%E7%90%86/)
+
+
+
+
+
+
 
 
 
