@@ -6,8 +6,8 @@ desc:
 tag: 
 category: Vue
 ---
-### 参考各路大佬的分析Vue源码文章，自己跟着阅读一遍Vue源码
-'2019-03/Vue'文件夹为Vue项目的src部分文件，版本为2.6.8。
+学习Vue源码，我拷贝的一份源码在[这里](https://github.com/hbxywdk/FE-Record/tree/master/2019-03/Vue)，版本为2.6.8，里面有我做的各种注释。（注：暂不考虑SSR部分的代码）
+
 
 ### 文件结构
 ```
