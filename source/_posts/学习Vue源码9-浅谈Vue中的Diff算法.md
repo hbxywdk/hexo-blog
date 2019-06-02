@@ -295,9 +295,9 @@ return function patch (oldVnode, vnode, hydrating, removeOnly) {
 }
 
 ```
-针对`初始化`与`更新`这两种情况做处理，如果是更新则会调用 patchVnode
-关于初始化的判断：第一个参数传的如果是一个真实DOM，那么就会有nodeType属性，
-根据这一点就可以判断是否是更新流程。
+patch 方法针对`初始化`与`更新`这两种情况做处理，
+关于`初始化`与`更新`的判断：patch 函数的第一个参数传的如果是一个真实DOM，那么就会有nodeType属性，则是初始化。
+如果是更新，且新旧两个vNode值得比较（即调用samevnode方法返回true，说明是同一个节点）则会调用 patchVnode 进一步比较。
 
 
 #### patchVnode
@@ -373,11 +373,14 @@ if (isDef(oldCh) && isDef(ch)) {
   if (oldCh !== ch) updateChildren(elm, oldCh, ch, insertedVnodeQueue, removeOnly)
 } 
 ```
-如果新旧 vNode都有 children 则调用 updateChildren 方法来对比他俩的 children，
-在 updateChildren 方法中就会用到 `Diff算法` 来对比、更新节点，
-同时也会调用 patchVnode 继续对比下一级子节点。
+1. 如果 oldVnode 与 vNode 都有 children 则调用 `updateChildren` 方法来对比他俩的 children，
+在 updateChildren 方法中就会用到 `Diff算法` 来对比、更新节点，同时再 updateChildren 中也会调用 patchVnode 继续对比下一级子节点。
+2. 如果oldVnode 没有 children，而 vNode 有，则调用 addVnode 方法，添加所有的 children。
+3. 如果 oldVnode 有 children，而 vNode 有，则调用 removeVnode 方法，移除原有的 children。
+4. 如果 oldVnode 与 vNode 都是文本节点，则会用 vNode 的文本替换 oldVnode 的文本。
 
 #### updateChildren
+这个方法是 diff 算法的核心：
 ```
   function updateChildren (parentElm, oldCh, newCh, insertedVnodeQueue, removeOnly) {
     let oldStartIdx = 0 // 旧list起始索引
