@@ -1,6 +1,6 @@
 ---
-title: Axios源码2
-date: 2019-07-12 18:30:41
+title: Axios源码2-Axios构造函数
+date: 2019-07-14 18:30:41
 summary: 
 desc: 
 tag: 
@@ -76,12 +76,12 @@ Axios.prototype.request = function request(config) {
   var chain = [dispatchRequest, undefined];
   var promise = Promise.resolve(config);
 
-  // 遍历每一个 request 拦截器
+  // 遍历每一个 request 拦截器，unshift fulfilled 与 rejected 进 chain
   this.interceptors.request.forEach(function unshiftRequestInterceptors(interceptor) {
     chain.unshift(interceptor.fulfilled, interceptor.rejected);
   });
 
-  // 遍历每一个 response 拦截器
+  // 遍历每一个 response 拦截器，push fulfilled 与 rejected 进 chain
   this.interceptors.response.forEach(function pushResponseInterceptors(interceptor) {
     chain.push(interceptor.fulfilled, interceptor.rejected);
   });
@@ -105,7 +105,7 @@ var promise = Promise.resolve(config);
 之后分别遍历 request 拦截器、response 拦截器，将每一个 request 拦截器的 fulfilled 与 rejected 方法添加到 chain 这个数组的前面，将每一个 response 拦截器的 fulfilled 与 rejected 方法添加到 chain 的后面。
 
 之后 while 循环，当 chain 还有 length 时候，就会一直取出 chain 的前两个元素，再将它们作为参数执行 promise.then(元素0，元素1)，并将其赋值给 promise，最后返回 promise。
-初看 request 方法时，懵逼就懵逼再这。
+初看 request 方法时，懵逼就懵逼再这里。
 
 ##### 我们将其简化一下，不考虑所有拦截器的情况：
 ```
@@ -126,13 +126,13 @@ promise.then(() => {
 axios 充分利用了 Promise 的特性，Promise 也会返回一个 Promise、Promise.resolve 的参数会传递给 then 的 fulfilled 方法，使得我们在 testRequest 中也可以得到 config，当 testRequest 成功后，再执行用户自定义的 then 方法。
 
 ##### 接下来我们看有拦截器的情况
-这里我们假设 request、response拦截器个定义了两个，那么遍历每一个拦截器之后的 chain 就是这个样子的:
+这里我们假设 request、response拦截器各定义了两个，那么遍历每一个拦截器之后的 chain 就是这个样子的:
 `[request成功拦截, request失败拦截, request成功拦截，request失败拦截, testRequest, undefined, response成功拦截, response失败拦截, response成功拦截, response失败拦截]`
 之后执行 while 循环，当 chain 还有 length 时候，就会一直移除 chain 的前两个元素，并将它们作为参数执行 promise.then(元素0，元素1)
 chain 就会变成下面的样子：
 `[request成功拦截，request失败拦截, testRequest, undefined, response成功拦截, response失败拦截, response成功拦截, response失败拦截]`
 `[testRequest, undefined, response成功拦截, response失败拦截, response成功拦截, response失败拦截]`
-当循环到 testRequest 则会发起请求，resolve 向下传递数据就由 config 修改为了 response。
+当 while 遍历到 testRequest 则会发起请求，resolve 向下传递数据就由 config 修改为了 response。
 `[response成功拦截, response失败拦截, response成功拦截, response失败拦截]`
 `[response成功拦截, response失败拦截]`
 `[]`
@@ -183,6 +183,7 @@ promise.then((res) => {
   console.log('用户最终拿到的数据', res)
 })
 ```
+
 我们执行这段代码，可以在 console 面板中看到输出：
 ```
 原始config： {url: "test"} 我会修改 config 后返回 // 此处第一个 request 拦截器对 config 进行修改
@@ -196,7 +197,7 @@ Promise {<pending>} // pending 状态的 Promise
 
 用户最终拿到的数据 {status: 200, data: "I am OK OK"} // 这里是用户自定义的 then 中拿到的结果
 ```
-`request 方法是 axios 的核心之一，初看有些懵逼，但真正看明白了，会让人直呼妙啊，妙啊！`
+`request 方法是 axios 的核心之一，初看有些懵逼，但真正看明白了，会让人直呼妙啊！妙啊！`
 
 #### 其他
 ##### 定义 getUri 方法
