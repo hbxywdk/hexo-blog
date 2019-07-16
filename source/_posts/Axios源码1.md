@@ -8,6 +8,19 @@ category: Js
 ---
 Axios 版本 0.19.0
 
+#### 目录结构
+```
+-- lib
+  -- adapters // 请求方法，分为浏览器与 Node.js 两个环境
+  -- cancel // Axios 取消请求相关
+  -- core // Axios 核心
+  -- helpers // 存放辅助函数
+  -- axios.js // 入口文件
+  -- defaults.js // Axios 默认配置
+  -- utils.js // 工具方法
+
+```
+
 #### 入口文件
 axios 的 入口文件为 lib/axios.js:
 ```
