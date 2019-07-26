@@ -170,3 +170,131 @@ export default {
     })
   }
 ```
+
+#### <router-link>
+```
+export default {
+  name: 'RouterLink',
+  props: {
+    to: {
+      type: toTypes,
+      required: true
+    },
+    tag: { // 组件渲染成的标签名，默认为a
+      type: String,
+      default: 'a'
+    },
+    exact: Boolean,
+    append: Boolean,
+    replace: Boolean,
+    activeClass: String,
+    exactActiveClass: String,
+    event: { // 声明可以用来触发导航的事件。
+      type: eventTypes,
+      default: 'click'
+    }
+  },
+  render (h: Function) {
+    const router = this.$router
+    const current = this.$route
+    const { location, route, href } = router.resolve(
+      this.to,
+      current,
+      this.append
+    )
+
+    const classes = {}
+    // <router-link> 的默认“激活 class 类名。https://router.vuejs.org/zh/api/#linkactiveclass
+    const globalActiveClass = router.options.linkActiveClass
+    // 全局配置 <router-link> 精确激活的默认的 class。https://router.vuejs.org/zh/api/#linkexactactiveclass
+    const globalExactActiveClass = router.options.linkExactActiveClass
+    // 如果没传 linkActiveClass 或 linkExactActiveClass，为它俩设置默认值
+    const activeClassFallback =
+      globalActiveClass == null ? 'router-link-active' : globalActiveClass
+    const exactActiveClassFallback =
+      globalExactActiveClass == null
+        ? 'router-link-exact-active'
+        : globalExactActiveClass
+    // router-link 没有传入 active-class 属性，就将其赋值为全局配置的 linkActiveClass
+    const activeClass =
+      this.activeClass == null ? activeClassFallback : this.activeClass
+    // router-link 没有传入 exact-active-class 属性，就将其赋值为全局配置的 linkExactActiveClass
+    const exactActiveClass =
+      this.exactActiveClass == null
+        ? exactActiveClassFallback
+        : this.exactActiveClass
+    // 对重定向的处理
+    const compareTarget = route.redirectedFrom
+      ? createRoute(null, normalizeLocation(route.redirectedFrom), null, router)
+      : route
+
+    classes[exactActiveClass] = isSameRoute(current, compareTarget)
+    classes[activeClass] = this.exact
+      ? classes[exactActiveClass]
+      : isIncludedRoute(current, compareTarget)
+
+    // 事件处理函数
+    const handler = e => {
+      if (guardEvent(e)) {
+        // 调用 router.replace 或 router.push 跳转路由
+        if (this.replace) {
+          router.replace(location)
+        } else {
+          router.push(location)
+        }
+      }
+    }
+
+    const on = { click: guardEvent }
+    if (Array.isArray(this.event)) {
+      this.event.forEach(e => {
+        on[e] = handler
+      })
+    } else {
+      on[this.event] = handler
+    }
+
+    // 构造 createElement 的 data 参数
+    const data: any = {
+      class: classes
+    }
+
+    if (this.tag === 'a') {
+      data.on = on
+      data.attrs = { href }
+    } else {
+      // find the first <a> child and apply listener and href
+      const a = findAnchor(this.$slots.default)
+      if (a) {
+        // in case the <a> is a static node
+        a.isStatic = false
+        const aData = (a.data = extend({}, a.data))
+        aData.on = on
+        const aAttrs = (a.data.attrs = extend({}, a.data.attrs))
+        aAttrs.href = href
+      } else {
+        // doesn't have <a> child, apply listener to self
+        data.on = on
+      }
+    }
+
+    return h(this.tag, data, this.$slots.default)
+  }
+}
+```
+
+<router-link> 组件比较简单，首先处理全局配置的 linkActiveClass 与 linkExactActiveClass，之后处理 router-link 组件的 active-class 属性与 exact-active-class 属性。
+构造 createElement 的 data 参数，包括 `on`、`attrs`。handel 函数为事件的回调函数：
+```
+  const handler = e => {
+    if (guardEvent(e)) {
+      // 调用 router.replace 或 router.push 跳转路由
+      if (this.replace) {
+        router.replace(location)
+      } else {
+        router.push(location)
+      }
+    }
+  }
+```
+guardEvent 函数会过滤掉无需处理事件，最后根据是否有 replace 属性，调用 router.replace 或 router.push 跳转路由。
