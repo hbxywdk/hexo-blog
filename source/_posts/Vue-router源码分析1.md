@@ -6,7 +6,7 @@ desc:
 tag: 
 category: Vue
 ---
-Axios 版本 0.19.0
+Vue-router 版本 3.0.7
 
 #### 目录结构
 ```
