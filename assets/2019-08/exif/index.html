@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<style>
+    img{height: 100px}
+</style>
+<script src="./lrz.all.bundle.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
+<body>
+    <!-- <img src="./WechatIMG101.jpeg" /> -->
+    <input accept="image/*" type="file"/>
+    <button id="btn1">压缩图片，输出空Exif</button>
+    <button id="btn2">为压缩图片添加Exif</button>
+    <h2>原始图片：</h2>
+    <img id="img1" />
+    <div id="exif1"></div>
+    <h2>压缩图片：</h2>
+    <img id="img2" />
+    <div id="exif2"></div>
+    <h2>添加exif的压缩图片</h2>
+    <img id="img3" />
+</body>
+<script>
+    // base64 转 ArrayBuffer
+    function base64ToArrayBuffer(base64, contentType) {
+        contentType = contentType || base64.match(/^data\:([^\;]+)\;base64,/mi)[1] || ''; // e.g. 'data:image/jpeg;base64,...' => 'image/jpeg'
+        base64 = base64.replace(/^data\:([^\;]+)\;base64,/gmi, '');
+        // btoa是binary to ascii，将binary的数据用ascii码表示，即Base64的编码过程
+        // atob则是ascii to binary，用于将ascii码解析成binary数据
+        var binary = atob(base64);
+        // console.log(binary)
+        var len = binary.length;
+        var buffer = new ArrayBuffer(len);
+        var view = new Uint8Array(buffer);
+        for (var i = 0; i < len; i++) {
+            view[i] = binary.charCodeAt(i);
+        }
+        return buffer;
+    }
+    const file = document.querySelector('input'); // 图片选择
+
+    const img1 = document.querySelector('#img1'); // 原始图片
+    const img2 = document.querySelector('#img2'); // 压缩图片
+    const img3 = document.querySelector('#img3'); // 添加exif的压缩图片
+
+    const exif1 = document.querySelector('#exif1'); // 原始Exif
+    const exif2 = document.querySelector('#exif2'); // 拼接Exif
+
+    const btn1 = document.querySelector('#btn1'); // 压缩图片，输出空Exif
+    const btn2 = document.querySelector('#btn2'); // 为压缩图片添加Exif
+
+    let orignBase64 = null; // 原始 base64
+    let minBase64 = null; // 压缩后的 base64
+    // let segments = []; // 分割片段
+    let exif = null; // exif
+
+    // 图片选择
+    file.addEventListener('change', function(e) {
+        console.log('文件：', this.files[0])
+        const fr = new FileReader();
+        fr.onloadend = function (e) {
+            orignBase64 = e.target.result;
+            img1.src = orignBase64;
+            img1.onload = getOrignExif
+        }
+        fr.readAsDataURL(this.files[0]);
+    })
+
+    // 获取原始图片 EXIF
+    function getOrignExif() {
+        EXIF.getData(img1, function() {
+            var allMetaData = EXIF.getAllTags(this);
+            // console.log(JSON.stringify(allMetaData, null, "\t"));
+            exif1.innerHTML = JSON.stringify(allMetaData);
+        });
+        // 将原始 base64 转换为 arrayBuffer
+        let orignBuffer = base64ToArrayBuffer(orignBase64);
+        getSegments(orignBuffer);
+    }
+    // 压缩图片，输出空Exif
+    btn1.addEventListener('click', function() {
+        lrz(orignBase64, { width: 800})
+        .then(function (rst) {
+            // 处理成功会执行
+            console.log("rst.base64:", rst.base64)
+            minBase64 = rst.base64;
+            img2.src = minBase64;
+            img2.onload = getOMinExif;
+        })
+        .catch(function (err) {
+        })
+    })
+
+    // 获取压缩图片 EXIF
+    function getOMinExif() {
+        EXIF.getData(img2, function() {
+            var allMetaData = EXIF.getAllTags(this);
+            exif2.innerHTML = JSON.stringify(allMetaData);
+        });
+    }
+
+    // 为压缩图片添加Exif
+    btn2.addEventListener('click', function() {
+        let minBuffer = base64ToArrayBuffer(minBase64);
+        let newImg = insertEXIF(minBuffer, exif);
+        console.log(newImg)
+        // 
+        showImage(new Blob([newImg],{type : "image/jpeg"}), function(r) {
+            console.warn(r)
+            img3.src = r;
+            img3.onload = function() {
+                EXIF.getData(img3, function() {
+                    var allMetaData = EXIF.getAllTags(this);
+                    exif2.innerHTML = JSON.stringify(allMetaData);
+                });
+                console.log('img1.src.length', img1.src.length)
+                console.log('img2.src.length', img2.src.length)
+                console.log('img3.src.length', img3.src.length)
+            };
+        })
+    })
+
+    function showImage(file,callback){
+        var reader = new FileReader();
+        reader.onload = function(){
+            callback(reader.result);
+        }
+        reader.readAsDataURL(file);
+    }
+
+    // 标记以及值等分割开来
+    function getSegments(arrayBuffer) {
+        var head = 0, segments = [];
+        var length, endPoint, seg;
+        var arr = [].slice.call(new Uint8Array(arrayBuffer), 0);
+
+        while (1) {
+            if (arr[head] === 0xff && arr[head + 1] === 0xda) { //Start of Scan 0xff 0xda  SOS // 表示已经遍历完所有标记，再往下就是图像数据流流
+                break;
+            }
+            if (arr[head] === 0xff && arr[head + 1] === 0xd8) { //Start of Image 0xff 0xd8  SOI // JPG 的开头
+                head += 2;
+            } else { // 找到每个marker
+                length = arr[head + 2] * 256 + arr[head + 3]; // 每个marker 后 的两个字节为 该marker信息的长度
+                endPoint = head + length + 2;
+                seg = arr.slice(head, endPoint); // 截取信息（0xff+标记符号+数据大小描述符+数据内容）
+                head = endPoint;
+                segments.push(seg); // 将每个marker + 信息 push 进去。
+            }
+            if (head > arr.length) {
+                break;
+            }
+        }
+        console.warn('分割片段', segments);
+        getEXIF(segments)
+    }
+
+    // 从标记片段筛选 & 取出 exif 信息
+    function getEXIF(segments) {
+        // console.log(segments)
+        if (!segments.length) {
+            return [];
+        }
+        var seg = [];
+        for (var x = 0; x < segments.length; x++) {
+            var s = segments[x];
+            // console.log(s, '======')
+            // 0xff 0xe1开头的才是 exif数据(即app1)
+            if (s[0] === 0xff && s[1] === 0xe1) { // app1 exif 0xff 0xe1
+                seg = seg.concat(s);
+            }
+        }
+        exif = seg;
+        console.warn('Exif', exif);
+    }
+
+    // 插入 Exif 信息
+    function insertEXIF(resizedImg, exifArr) {
+        var arr = [].slice.call(new Uint8Array(resizedImg), 0);
+        if (arr[2] !== 0xff || arr[3] !== 0xe0) {
+            return resizedImg; //不是标准的JPEG文件
+        }
+
+        var app0_length = arr[4] * 256 + arr[5]; //两个字节
+
+        var newImage = [0xff, 0xd8].concat(exifArr, arr.slice(4 + app0_length)); //合并文件 SOI + EXIF + 去除APP0的图像信息
+
+        return new Uint8Array(newImage);
+    }
+
+    /*
+        还需要判断是不是JPG，这里暂时不写
+        var arrayBuffer = base64ToArrayBuffer(img.src);
+        console.log(EXIF.readFromBinaryFile(arrayBuffer))
+
+        console.log('jpg开头0xFF', new Uint8Array(arrayBuffer)[0])
+        // 或
+        var d = new DataView(arrayBuffer);
+        console.log('jpg开头0xFF', d.getUint8(0))
+
+
+var binary = atob('/9j/4QIM') // jpg格式开头 0xff 0xd8 255 216
+var len = binary.length;
+var buffer = new ArrayBuffer(len);
+var view = new Uint8Array(buffer);
+for (var i = 0; i < len; i++) {
+    view[i] = binary.charCodeAt(i);
+}
+var b = new DataView(buffer)
+b.getUint8(0)
+    */
+</script>
+</html>

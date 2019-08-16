@@ -28,7 +28,7 @@ Base64 从名称就可以看出，它是一种基于64个可打印字符来表�
 ![Base64索引表](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-08/base64index.png)
 
 Base64只有64个字符，6的bit即可表示64个字符(2的6次方为64)，正常的字符是使用8bit表示。我们看下面这张图：
-![Base64原理图](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-08/base64-1.jp)
+![Base64原理图](https://raw.githubusercontent.com/hbxywdk/hexo-blog/master/assets/2019-08/base64-1.jpg)
 `Hello!` 这个字符串的二进制值如第三行所示，正常字符使用 8bit 表示，转换 base64 则使用 6bit 表示，以 6个一截断，再对照 base64 索引表可以很容易的得出其 base64 编码结果为 SGVsbG8h。
 Tips: 转换后长度/转换前长度 为 4:3。
 
@@ -52,11 +52,125 @@ SOI 与 EOI 两个特殊的标记的后不跟数据, 而其他的标记会在其
 ```
 0xFF+标记号(1个字节)+数据大小描述符(2个字节)+数据内容(n个字节)
 ```
-标记的种类又很多种，0xFFE0~0xFFEF之间的标记被叫做 "应用标记"，存放 Exif 信息的标记以 `APP1(0xFFE1)` 开头，
+标记的种类又很多种，0xFFE0~0xFFEF之间的标记被叫做 `应用标记`，存放 Exif 信息的标记以 `APP1(0xFFE1)` 开头，
 
-#### 解决方案
+#### 问题的解决方案
+##### 方案一
+原压缩图片不变，通过 [exif.js](https://github.com/exif-js/exif-js) 获取到原图  Exif 信息后通过接口传给后台，这种方案没什么意思，接着看方案二。
+
+##### 方案二
+保存原图  Exif 信息，待图片压缩完成后，将原图  Exif 信息拼接到压缩图上。
+
+由于传输的图片都是 base64 格式，这里提供一个网址供查看 base64 图片的 exif 信息：http://code.ciaoca.com/javascript/exif-js/demo/base64
+
+在方案一中，我提到了 exif.js，不过遗憾的是它提供的只有读 Exif 信息的方法，没有写 Exif 信息的方法，所以想要实现 Exif 信息拼接就得手撸了，不过好在我找到了前人的一篇文章可供参考：http://icaife.github.io/2015/05/19/js-compress-JPEG-width-exif/#more
+
+接下来是代码：
+
+压缩原始 base64 图片：
+```
+// 原始 base64 图片，由于太长，这里省略展示
+let orignBase64 = 'data:image/jpeg;base64,/9j/4QIMRXhpZgAATU0AKgAAAAgACQEAAAQAA 省略......'；;
+let minBase64 = null; // 压缩图
+let exif = null; // 存 Exif 信息
+
+// 压缩使用的是 lrz 可自行在 github 上搜索
+lrz(orignBase64, { width: 800})
+.then(function (rst) {
+    minBase64 = rst.base64;
+})
+.catch(function (err) {
+})
+```
+取得 Exif 信息：
+```
+// 工具函数 将 base64 转 ArrayBuffer
+function base64ToArrayBuffer(base64, contentType) {
+    contentType = contentType || base64.match(/^data\:([^\;]+)\;base64,/mi)[1] || ''; // e.g. 'data:image/jpeg;base64,...' => 'image/jpeg'
+    base64 = base64.replace(/^data\:([^\;]+)\;base64,/gmi, '');
+    // btoa是binary to ascii，将binary的数据用ascii码表示，即Base64的编码过程
+    // atob则是ascii to binary，用于将ascii码解析成binary数据
+    var binary = atob(base64);
+    // console.log(binary)
+    var len = binary.length;
+    var buffer = new ArrayBuffer(len);
+    var view = new Uint8Array(buffer);
+    for (var i = 0; i < len; i++) {
+        view[i] = binary.charCodeAt(i);
+    }
+    return buffer;
+}
+// 将原始 base64 转换为 arrayBuffer
+let orignBuffer = base64ToArrayBuffer(orignBase64);
+// 调用 getSegments 获取 0xFFE0~0xFFEF 开头的应用标记片段
+getSegments(orignBuffer);
+```
+```
+// 获取 0xFFE0~0xFFEF 开头的应用标记片段
+function getSegments(arrayBuffer) {
+    var head = 0, segments = [];
+    var length, endPoint, seg;
+    var arr = [].slice.call(new Uint8Array(arrayBuffer), 0);
+
+    while (1) {
+        if (arr[head] === 0xff && arr[head + 1] === 0xda) { //Start of Scan 0xff 0xda  SOS // 表示已经遍历完所有标记，再往下就是图像数据流流
+            break;
+        }
+        if (arr[head] === 0xff && arr[head + 1] === 0xd8) { //Start of Image 0xff 0xd8  SOI // JPG 的开头
+            head += 2;
+        } else { // 找到每个marker
+            length = arr[head + 2] * 256 + arr[head + 3]; // 每个marker 后 的两个字节为 该marker信息的长度
+            endPoint = head + length + 2;
+            seg = arr.slice(head, endPoint); // 截取信息（0xff+标记符号+数据大小描述符+数据内容）
+            head = endPoint;
+            segments.push(seg); // 将每个marker + 信息 push 进去。
+        }
+        if (head > arr.length) {
+            break;
+        }
+    }
+    console.warn('分割片段', segments);
+    getEXIF(segments)
+}
+// 从标记片段筛选 & 取出 exif 信息
+function getEXIF(segments) {
+    if (!segments.length) { return []; }
+    var seg = [];
+    for (var x = 0; x < segments.length; x++) {
+        var s = segments[x];
+        // 0xff 0xe1开头的才是 exif数据(即app1)
+        if (s[0] === 0xff && s[1] === 0xe1) { // app1 exif 0xff 0xe1
+            seg = seg.concat(s);
+        }
+    }
+    exif = seg;
+}
+```
+拼接 Exif 到压缩后的 base64 中：
+```
+// 插入 Exif 信息
+function insertEXIF(resizedImg, exifArr) {
+    var arr = [].slice.call(new Uint8Array(resizedImg), 0);
+    if (arr[2] !== 0xff || arr[3] !== 0xe0) {
+        return resizedImg; //不是标准的JPEG文件
+    }
+
+    var app0_length = arr[4] * 256 + arr[5]; //两个字节
+
+    var newImage = [0xff, 0xd8].concat(exifArr, arr.slice(4 + app0_length)); //合并文件 SOI + EXIF + 去除APP0的图像信息
+
+    return new Uint8Array(newImage);
+}
+
+let minBuffer = base64ToArrayBuffer(minBase64);
+let newImg = insertEXIF(minBuffer, exif);
+console.log('最终输出图片', newImg)
+```
+把新生成的图片复制到 http://code.ciaoca.com/javascript/exif-js/demo/base64 可以看到 Exif 信息已经成功添加。
 
 #### 二进制数组
+上面有很多二进制文件操作，这里补充一下，共同学习。
+##### 未完待续
 
 #### 参考
 > https://www.cnblogs.com/peterYong/p/10959964.html
