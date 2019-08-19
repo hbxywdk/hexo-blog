@@ -56,16 +56,16 @@ SOI 与 EOI 两个特殊的标记的后不跟数据, 而其他的标记会在其
 
 #### 问题的解决方案
 ##### 方案一
-原压缩图片不变，通过 [exif.js](https://github.com/exif-js/exif-js) 获取到原图  Exif 信息后通过接口传给后台，这种方案没什么意思，接着看方案二。
+原压缩图片不变，通过 [Exif.js](https://github.com/exif-js/exif-js) 获取到原图  Exif 信息后通过接口传给后台，这种方案没什么意思，接着看方案二。
 
 ##### 方案二
 保存原图  Exif 信息，待图片压缩完成后，将原图  Exif 信息拼接到压缩图上。
 
-由于传输的图片都是 base64 格式，这里提供一个网址供查看 base64 图片的 exif 信息：http://code.ciaoca.com/javascript/exif-js/demo/base64
+由于传输的图片都是 base64 格式，这里提供一个网址可以查看 base64 图片的 exif 信息：http://code.ciaoca.com/javascript/exif-js/demo/base64
 
-在方案一中，我提到了 exif.js，不过遗憾的是它提供的只有读 Exif 信息的方法，没有写 Exif 信息的方法，所以想要实现 Exif 信息拼接就得手撸了，不过好在我找到了前人的一篇文章可供参考：http://icaife.github.io/2015/05/19/js-compress-JPEG-width-exif/#more
+在方案一中，我提到了 Exif.js，不过遗憾的是它提供的只有读 Exif 信息的方法，没有写 Exif 信息的方法，所以想要实现 Exif 信息拼接就得手撸了，不过好在我找到了一篇相关文章：http://icaife.github.io/2015/05/19/js-compress-JPEG-width-exif/#more，里面的代码已经实现了这个功能，所以我准备直接修改 lrz 源码，使其可以额外输出一个带有 Exif 信息的 base64 压缩图。
 
-接下来是代码：
+拼接 Exif 的核心代码：
 
 压缩原始 base64 图片：
 ```
@@ -105,6 +105,12 @@ let orignBuffer = base64ToArrayBuffer(orignBase64);
 // 调用 getSegments 获取 0xFFE0~0xFFEF 开头的应用标记片段
 getSegments(orignBuffer);
 ```
+这里给出标记的大致结构，下面的代码会用到：
+标记开头 | 标记类型 | 标记大小 | 标记内容
+- | - | - | -
+0xff | 标记类型(1字节) | 数据大小(2字节) | 数据内容(n字节)
+
+关于标记类型，可以在 [Exif.js](https://github.com/exif-js/exif-js/blob/master/exif.js) 的源码中找到，比如`图片宽度 ImageWidth 对应的标记是 0x0100`。
 ```
 // 获取 0xFFE0~0xFFEF 开头的应用标记片段
 function getSegments(arrayBuffer) {
@@ -112,24 +118,31 @@ function getSegments(arrayBuffer) {
     var length, endPoint, seg;
     var arr = [].slice.call(new Uint8Array(arrayBuffer), 0);
 
-    while (1) {
-        if (arr[head] === 0xff && arr[head + 1] === 0xda) { //Start of Scan 0xff 0xda  SOS // 表示已经遍历完所有标记，再往下就是图像数据流流
-            break;
-        }
-        if (arr[head] === 0xff && arr[head + 1] === 0xd8) { //Start of Image 0xff 0xd8  SOI // JPG 的开头
+    while (true) {
+        // SOS(Start of Scan, 由 0xff 0xda 开头)
+        // 遍历到 SOS 表示已经遍历完所有标记，再往下就是图像数据流了，直接 break
+        if (arr[head] === 0xff && arr[head + 1] === 0xda) { break;}
+
+        // SOI(Start of Image)是 JPG 文件的开头内容，由 0xff 0xd8 开头
+        if (arr[head] === 0xff && arr[head + 1] === 0xd8) {
             head += 2;
-        } else { // 找到每个marker
-            length = arr[head + 2] * 256 + arr[head + 3]; // 每个marker 后 的两个字节为 该marker信息的长度
-            endPoint = head + length + 2;
-            seg = arr.slice(head, endPoint); // 截取信息（0xff+标记符号+数据大小描述符+数据内容）
+        } 
+        // 找出每个标记片段
+        else {
+            // 每个标记开头后跟着的两个字节记录了该标记所记录内容的长度
+            length = arr[head + 2] * 256 + arr[head + 3]; // 内容长度
+            endPoint = head + length + 2; // 内容结束位置
+            // 从0xff开头，到标记数据内容结束全部截出来
+            seg = arr.slice(head, endPoint);
             head = endPoint;
-            segments.push(seg); // 将每个marker + 信息 push 进去。
+            // push整个标记信息
+            segments.push(seg);
         }
         if (head > arr.length) {
             break;
         }
     }
-    console.warn('分割片段', segments);
+    // console.warn('分割片段', segments);
     getEXIF(segments)
 }
 // 从标记片段筛选 & 取出 exif 信息
@@ -151,15 +164,15 @@ function getEXIF(segments) {
 // 插入 Exif 信息
 function insertEXIF(resizedImg, exifArr) {
     var arr = [].slice.call(new Uint8Array(resizedImg), 0);
+    //不是标准的JPEG文件
     if (arr[2] !== 0xff || arr[3] !== 0xe0) {
-        return resizedImg; //不是标准的JPEG文件
+        return resizedImg; 
     }
-
     var app0_length = arr[4] * 256 + arr[5]; //两个字节
 
-    var newImage = [0xff, 0xd8].concat(exifArr, arr.slice(4 + app0_length)); //合并文件 SOI + EXIF + 去除APP0的图像信息
-
-    return new Uint8Array(newImage);
+    // 拼接文件 SOI + EXIF + 去除APP0的图像信息
+    var newImg = [0xff, 0xd8].concat(exifArr, arr.slice(4 + app0_length)); 
+    return new Uint8Array(newImg);
 }
 
 let minBuffer = base64ToArrayBuffer(minBase64);
@@ -169,11 +182,46 @@ console.log('最终输出图片', newImg)
 把新生成的图片复制到 http://code.ciaoca.com/javascript/exif-js/demo/base64 可以看到 Exif 信息已经成功添加。
 
 #### 二进制数组
-上面有很多二进制文件操作，这里补充一下，共同学习。
-##### 未完待续
+上面有很多二进制文件操作，这里简单补充一些相关知识。
+
+##### 二进制数组产生的原因
+二进制数组产生的原因与WebGL项目有关，为的满足 JavaScript 与显卡之间大量的、实时的数据交换，这些通信的数据都得是二进制的。
+
+##### ArrayBuffer 对象
+ArrayBuffer 是内存中的一段二进制数据，无法直接操作，可使用 `视图（TypedArray、DataView）`提供的数组方法，操作内存，其作用是以指定格式解读二进制数据。
+
+##### TypedArray 对象
+用来生成内存的视图，通过9个构造函数，可以生成9种数据格式的视图。
+```
+Int8Array：8位有符号整数，长度1个字节。
+Uint8Array：8位无符号整数，长度1个字节。
+Uint8ClampedArray：8位无符号整数，长度1个字节，溢出处理不同。
+Int16Array：16位有符号整数，长度2个字节。
+Uint16Array：16位无符号整数，长度2个字节。
+Int32Array：32位有符号整数，长度4个字节。
+Uint32Array：32位无符号整数，长度4个字节。
+Float32Array：32位浮点数，长度4个字节。
+Float64Array：64位浮点数，长度8个字节。
+```
+TypedArray 指定数据格式读取整个 ArrayBuffer。
+##### DataView 对象
+用来生成内存的视图，可以自定义格式和字节序，同样支持9种数据类型，相较于 TypedArray 更加灵活，比如可以以不同的格式读取同一个 ArrayBuffer 上不同位置的数据。
+
+##### Blob
+Blob(binary large object)，二进制文件大对象，是存储二进制文件的“容器”。Blob构造函数接受两个参数，第一个参数是一个包含实际数据的数组，第二个参数是数据的MIME类型。
+```
+new Blob([data], {type: "application/octet-binary"})
+```
+与 ArrayBuffer 的区别：
+- 它俩都能存二进制数据，但 Blob 储存量更大。
+- Blob 可以设置数据的 MIME 类型。
+- ArrayBuffer 表示原始的二进制数据，需要通过视图进行操作。
+- Blob对象表示一个不可变、原始数据的类文件对象。
 
 #### 参考
 > https://www.cnblogs.com/peterYong/p/10959964.html
 > https://blog.csdn.net/yyjsword/article/details/28876739
 > http://icaife.github.io/2015/05/19/js-compress-JPEG-width-exif/#more
+> http://javascript.ruanyifeng.com/stdlib/arraybuffer.html#toc2
+> https://www.jianshu.com/p/54d878aa0237
 
