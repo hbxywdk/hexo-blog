@@ -50,7 +50,7 @@ Store的代码位于 src/store.js 中，先看 Store 的构造函数：
     // 用以实现 Vuex.Store.watch 方法的Vue实例
     this._watcherVM = new Vue()
 
-    // 给 Store 绑定 commit 与 dispacth 方法
+    // 绑定 commit 与 dispacth 的指向
     const store = this
     const { dispatch, commit } = this
     this.dispatch = function boundDispatch (type, payload) {
@@ -119,19 +119,16 @@ export default class ModuleCollection {
     if (process.env.NODE_ENV !== 'production') {
       assertRawModule(path, rawModule)
     }
-    // Module（Store 的基础数据结构）
+
     const newModule = new Module(rawModule, runtime)
-    // path [] 、path ['modulesName1', 'modulesName2', 'modulesName3']
+
     if (path.length === 0) {
-      // 首次注册将 this.root 设置为 newModule
       this.root = newModule
     } else {
-      // 子模块走这里，给 parent 添加 child
       const parent = this.get(path.slice(0, -1))
-      parent.addChild(path[path.length - 1], newModule) // 调用 Module 的 addChild 添加子模块
+      // 调用 Module 的 addChild 添加子模块
+      parent.addChild(path[path.length - 1], newModule)
     }
-
-    // 如果用户有使用嵌套模块（modules），则遍历所有模块，为每个模块都执行 this.register 注册
     if (rawModule.modules) {
       forEachValue(rawModule.modules, (rawChildModule, key) => {
         this.register(path.concat(key), rawChildModule, runtime)
@@ -152,39 +149,136 @@ export default class ModuleCollection {
 ModuleCollection 的构造函数中从`根`开始调用 `this.register([], rawRootModule, false)`
 
 ```
+  // 注册
   register (path, rawModule, runtime = true) {
     if (process.env.NODE_ENV !== 'production') {
       assertRawModule(path, rawModule)
     }
-    // Module（Store 的基础数据结构）
+    // Module 是 Store 的基础数据结构！
     const newModule = new Module(rawModule, runtime)
-    // path [] 、path ['modulesName1', 'modulesName2', 'modulesName3']
+
+    // path = []
     if (path.length === 0) {
-      // 首次注册将 this.root 设置为 newModule
+      // 首次注册，将 this.root 设置为 newModule
       this.root = newModule
+
+    // 子模块走这里（path = ['modulesName']）
     } else {
-      // 子模块走这里，给 parent 添加 child
+      // 获取给 路径数组的最后一个元素，也就是当前 module 的 父亲 parent 添加 child
       const parent = this.get(path.slice(0, -1))
-      parent.addChild(path[path.length - 1], newModule) // 调用 Module 的 addChild 添加子模块
+      // 调用 Module 的 addChild 添加子模块
+      parent.addChild(path[path.length - 1], newModule)
     }
 
-    // 如果用户有使用嵌套模块（modules），则遍历所有模块，为每个模块都执行 this.register 注册
+    // 如果用户有使用嵌套模块（modules），则遍历所有模块，为每个模块都执行 this.register 注册。
     if (rawModule.modules) {
       forEachValue(rawModule.modules, (rawChildModule, key) => {
+        // args：路径数组、对应module、是否是运行时
         this.register(path.concat(key), rawChildModule, runtime)
       })
     }
   }
 ```
-从`根`开始调用 register 会调用将 `this.root` 设置为 `new Module(rawModule, runtime)`,
-Module (src/module/module.js) 是 Store 的基础数据结构，对于使用了 modules 子模块的则会调用 `父 Module 的 addChild` 方法添加到 父 Module 的 _children 中。
+从`根`开始调用 register 会实例化一个 Module 对象 `new Module(rawModule, runtime)` 并将其赋值给 `this.root`。
+这里的 `Module 对象 (src/module/module.js) 是 Store 的基础数据结构`，如果使用了 module 功能，则会递归注册所有子module。
+register 方法的第一个参数是路径数组，举几个例子：
+1. 如果未使用 module，则 path 为[]，代码不会走到这里，一次注册就结束了
+2. 如果有一级 module，则 path 为['modulesName']
+3. 如果有两级 module，则 path 为['modulesName', grandsonModulesName]
+4. 依次类推 。。。。。。
+
+对于使用了 modules 子模块的则会调用 `父 Module 的 addChild 方法`添加到 父 Module 的 _children 中，最终构造出`以 Module 为基础结构的树状结构`。
+
+
+#### Module
+Module 是 Store 的基础数据结构，代码不多，这里直接带注释全部贴出来：
+```
+// Store 的基础数据结构，包含一些属性与方法
+export default class Module {
+  constructor (rawModule, runtime) {
+    this.runtime = runtime
+    // 储存一些子模块
+    this._children = Object.create(null)
+    // 储存 rawModule
+    this._rawModule = rawModule
+    // 取出 rawModule 的 state
+    const rawState = rawModule.state
+    // 如果 rawState 是函数则执行，赋值 this.state 为函数返回值，否则赋值为 rawState 或 {}
+    this.state = (typeof rawState === 'function' ? rawState() : rawState) || {}
+  }
+
+  // 获取是否开启了 namespaced
+  get namespaced () {
+    return !!this._rawModule.namespaced
+  }
+
+  // 添加子模块
+  addChild (key, module) {
+    this._children[key] = module
+  }
+
+  // 移除子模块
+  removeChild (key) {
+    delete this._children[key]
+  }
+
+  // 获取子模块
+  getChild (key) {
+    return this._children[key]
+  }
+
+  // 更新方法，用传入的 rawModule 的 namespaced、actions、mutations、getters替换原有的
+  update (rawModule) {
+    // 更新 namespaced
+    this._rawModule.namespaced = rawModule.namespaced
+    // 更新 actions
+    if (rawModule.actions) {
+      this._rawModule.actions = rawModule.actions
+    }
+    // 更新 mutations
+    if (rawModule.mutations) {
+      this._rawModule.mutations = rawModule.mutations
+    }
+    // 更新 getters
+    if (rawModule.getters) {
+      this._rawModule.getters = rawModule.getters
+    }
+  }
+
+  // 取出 this._children 的每个子项，以其为参数传入 fn 执行
+  forEachChild (fn) {
+    forEachValue(this._children, fn)
+  }
+  // 取出 Getter 的每个子项，以其为参数传入 fn 执行
+  forEachGetter (fn) {
+    if (this._rawModule.getters) {
+      forEachValue(this._rawModule.getters, fn)
+    }
+  }
+  // 取出 Action 的每个子项，以其为参数传入 fn 执行
+  forEachAction (fn) {
+    if (this._rawModule.actions) {
+      forEachValue(this._rawModule.actions, fn)
+    }
+  }
+  // 取出 Mutation 的每个子项，以其为参数传入 fn 执行
+  forEachMutation (fn) {
+    if (this._rawModule.mutations) {
+      forEachValue(this._rawModule.mutations, fn)
+    }
+  }
+}
+
+```
 
 #### 继续看构造函数
 ##### 赋值 this._watcherVM 为一个 Vue 实例，用以实现 Vuex.Store.watch 方法。
 ```
   this._watcherVM = new Vue()
 ```
+watch 方法：
 ```
+  // Doc：https://vuex.vuejs.org/zh/api/#watch
   watch (getter, cb, options) {
     if (process.env.NODE_ENV !== 'production') {
       assert(typeof getter === 'function', `store.watch only accepts a function.`)
@@ -193,7 +287,7 @@ Module (src/module/module.js) 是 Store 的基础数据结构，对于使用了 
   }
 ```
 
-##### 给 Store 绑定 commit 与 dispacth 方法
+##### 绑定 commit 与 dispacth 的指向
 ```
   const store = this
   const { dispatch, commit } = this
@@ -206,6 +300,9 @@ Module (src/module/module.js) 是 Store 的基础数据结构，对于使用了 
 ```
 ##### 调用 installModule 与 resetStoreVM 方法
 ```
+  // 根 state
+  const state = this._modules.root.state
+  
   // 初始化根模块，同时递归注册所有子模块，并收集所有模块的 getters 存放到 this._wrappedGetters 中 
   installModule(this, state, [], this._modules.root)
 
