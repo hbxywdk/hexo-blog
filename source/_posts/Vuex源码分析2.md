@@ -306,7 +306,7 @@ watch 方法：
   // 初始化根模块，同时递归注册所有子模块，并收集所有模块的 getters 存放到 this._wrappedGetters 中 
   installModule(this, state, [], this._modules.root)
 
-  // 初始化 store 的 vm，负责反应，同时将 _wrappedGetters 注册为计算属性）
+  // 以当前的 state 重置数据，同时将 _wrappedGetters 注册为计算属性
   resetStoreVM(this, state)
 ```
 
