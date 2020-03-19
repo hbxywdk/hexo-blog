@@ -42,19 +42,21 @@ export default VConsole;
 class VConsole {
 
   constructor(opt) {
-    let that = this;
-    this.$dom = null;
+    // ...
 
-    this.option = { // 默认插件配置
+    let that = this;
+    this.$dom = null; // vConsole 的 HTML element
+
+    this.option = { // 配置项
       defaultPlugins: ['system', 'network', 'element', 'storage']
     };
 
-    this.activedTab = '';
-    this.tabList = [];
-    this.pluginList = {};
+    this.activedTab = ''; // 当前激活的 tab 的 plugin id
+    this.tabList = []; // 已安装的 tab 的 plugin id 列表。
+    this.pluginList = {}; // 插件列表
 
     this.switchPos = { // 定位
-        // code 省略
+        // ...
     };
 
     this.tool = tool; // 辅助函数
@@ -70,10 +72,10 @@ class VConsole {
       if (that.isInited) {
         return;
       }
-      that._render();
-      that._mockTap();
-      that._bindEvent();
-      that._autoRun();
+      that._render(); // 渲染面板 DOM
+      that._mockTap(); // 通过 touchstart & touchend 来模拟点击事件
+      that._bindEvent(); // 绑定 DOM 事件
+      that._autoRun(); // 初始化完成后自动运行
     };
     // 对 document 状态的处理，当 document 加载完成时再去调用 _onload
     if (document !== undefined) {
@@ -126,7 +128,7 @@ class VConsole {
   }
 ```
 _addBuiltInPlugins 方法中调用了 this.addPlugin 先添加了必须的 log 插件，之后根据配置一次添加了 System、Network、Element、Storage 插件。
-几部分的`插件对应的类 VConsoleDefaultPlugin、VConsoleSystemPlugin...... 等等再看`，接着是 this.addPlugin() 方法：
+几部分的`插件对应的 VConsoleDefaultPlugin、VConsoleSystemPlugin...... 等等`，接着是 this.addPlugin() 方法：
 
 ```
   addPlugin(plugin) {
@@ -148,6 +150,40 @@ _addBuiltInPlugins 方法中调用了 this.addPlugin 先添加了必须的 log �
     return true;
   }
 ```
+接下来是 this._initPlugin() 初始化插件，_initPlugin中分别触发插件的`init、renderTab、addTopBar、addTool、ready事件`，init会调用插件的onInit方法（如果有）；renderTab用于渲染tab栏目（最顶部的tab栏） 的内容；addTopBar用于给顶部的按钮区添加内容；addTool用于给最底部的按钮区添加内容；
+
+`renderTab、addTopBar、addTool`三个有回调函数，用于给对应的区域添加按钮。
+```
+  _initPlugin(plugin) {
+    let that = this;
+    plugin.vConsole = this; // 把vConsole挂到插件上
+    // 触发插件的 init 事件
+    plugin.trigger('init');
+    
+    // 渲染tab（如果是一个tab插件，则应有标签相关的事件）
+    plugin.trigger('renderTab', function(tabboxHTML) {
+      // code...
+    });
+
+    // 渲染 top bar（顶部的按钮）
+    plugin.trigger('addTopBar', function(btnList) {
+      // code...
+    });
+
+    // 渲染 tool bar（底部的按钮）
+    plugin.trigger('addTool', function(btnList) {
+      // code...
+    });
+
+    // 结束初始化，标记插件的isReady为true
+    plugin.isReady = true;
+    // 触发插件的ready事件
+    plugin.trigger('ready');
+  }
+```
+
+
+
 
 
 
